@@ -71,8 +71,8 @@ body.is-resizing-h .preview-instance {
 }
 
 .pane {
-    display: flex; 
-    flex-direction: column; 
+    display: flex;
+    flex-direction: column;
     height: 100%;
     min-width: 150px;
     position: relative;
@@ -84,9 +84,9 @@ body.is-resizing-h .preview-instance {
 .tab:hover { background-color: #3f3f3f; }
 
 .content-area { flex-grow: 1; position: relative; overflow: hidden; }
-.editor-instance, .preview-instance { 
-    height: 100%; 
-    width: 100%; 
+.editor-instance, .preview-instance {
+    height: 100%;
+    width: 100%;
     display: none;
     position: absolute;
     top: 0;
@@ -95,19 +95,19 @@ body.is-resizing-h .preview-instance {
 .preview-iframe { width: 100%; height: 100%; border: none; background-color: #fff; }
 
 #resizer-v {
-    width: 5px; 
+    width: 5px;
     background-color: var(--resizer-color);
-    cursor: col-resize; 
-    flex-shrink: 0; 
+    cursor: col-resize;
+    flex-shrink: 0;
     display: none;
     position: relative;
     z-index: 10;
 }
 
 #resizer-h {
-    height: 5px; 
+    height: 5px;
     background-color: var(--resizer-color);
-    cursor: row-resize; 
+    cursor: row-resize;
     flex-shrink: 0;
     position: relative;
     z-index: 10;
@@ -147,6 +147,20 @@ body.is-resizing-h .preview-instance {
 #main-container.split-view #pane-left { width: 50%; }
 #main-container.split-view #pane-right { display: flex; width: calc(50% - 5px); }
 #main-container.split-view #resizer-v { display: block; }
+
+/* Fullscreen Preview */
+.fullscreen-preview #main-container,
+.fullscreen-preview #console-container,
+.fullscreen-preview #resizer-h {
+    display: none;
+}
+.fullscreen-preview #editor-area-wrapper {
+    height: calc(100vh - 50px);
+}
+.fullscreen-preview #pane-left {
+    width: 100% !important; /* Override inline styles */
+    height: 100%;
+}
     </style>
 </head>
 <body>
@@ -160,7 +174,10 @@ body.is-resizing-h .preview-instance {
                 Auto-update
             </label>
             <button id="split-view-btn">Toggle Split Screen</button>
+            <button id="fullscreen-btn">Toggle Full Screen</button>
             <button id="preview-new-tab-btn">Open Preview in New Tab</button>
+            <button id="save-project-btn">Save Project</button>
+            <button id="import-files-btn">Import Files</button>
         </div>
     </div>
 
@@ -227,7 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainContainer = document.getElementById('main-container');
     const editorAreaWrapper = document.getElementById('editor-area-wrapper');
     const splitViewBtn = document.getElementById('split-view-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
     const previewNewTabBtn = document.getElementById('preview-new-tab-btn');
+    const saveProjectBtn = document.getElementById('save-project-btn');
+    const importFilesBtn = document.getElementById('import-files-btn');
     const runBtn = document.getElementById('run-btn');
     const autoUpdateCheckbox = document.getElementById('auto-update-checkbox');
     const resizerV = document.getElementById('resizer-v');
@@ -299,7 +319,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS ---
     splitViewBtn.addEventListener('click', toggleSplitView);
+    fullscreenBtn.addEventListener('click', toggleFullScreen);
     previewNewTabBtn.addEventListener('click', openPreviewInNewTab);
+    saveProjectBtn.addEventListener('click', saveProject);
+    importFilesBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '.html,.css,.js';
+        input.onchange = importFiles;
+        input.click();
+    });
     runBtn.addEventListener('click', updateAllPreviews);
     autoUpdateCheckbox.addEventListener('change', (e) => {
         state.autoUpdate = e.target.checked;
@@ -402,6 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CORE UI LOGIC ---
     function toggleSplitView() {
         state.isSplitView = !state.isSplitView;
+        renderUI();
+    }
+    
+    function toggleFullScreen() {
+        document.body.classList.toggle('fullscreen-preview');
+        // Ensure the preview is active in the main pane
+        if (document.body.classList.contains('fullscreen-preview')) {
+            state.activeLeftTab = 'preview';
+        }
         renderUI();
     }
 
@@ -558,6 +597,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) {
             console.error("Could not open new tab:", e);
             alert("Could not open new tab. Please check your popup blocker settings.");
+        }
+    }
+
+    // --- NEW FEATURES ---
+    function saveProject() {
+        const content = generatePreviewContent();
+        const blob = new Blob([content], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'project.html';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function importFiles(event) {
+        for (const file of event.target.files) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                if (file.name.endsWith('.html')) {
+                    files.html.model.setValue(content);
+                } else if (file.name.endsWith('.css')) {
+                    files.css.model.setValue(content);
+                } else if (file.name.endsWith('.js')) {
+                    files.js.model.setValue(content);
+                }
+            };
+            reader.readAsText(file);
         }
     }
 });
