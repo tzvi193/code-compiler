@@ -45,9 +45,11 @@ body.is-resizing-h .preview-instance {
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--toolbar-bg); padding: 5px 20px; height: 50px; box-sizing: border-box; }
 .toolbar h1 { font-size: 1.2em; margin: 0; }
-.toolbar .buttons { display: flex; align-items: center; gap: 15px; }
+.toolbar .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .toolbar button { background-color: var(--button-bg); color: var(--text-color); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
 .toolbar button:hover { background-color: var(--button-hover-bg); }
+.toolbar .button-group { display: flex; gap: 10px; border-left: 1px solid #555; padding-left: 10px;}
+
 
 /* Auto-update Toggle Switch */
 .toggle-switch { display: inline-flex; align-items: center; cursor: pointer; gap: 8px; font-size: 14px; }
@@ -127,10 +129,11 @@ body.is-resizing-h .preview-instance {
     padding: 0 10px; height: 35px; background-color: var(--console-header);
     font-weight: bold; flex-shrink: 0; border-bottom: 1px solid var(--border-color);
 }
-
-#clear-console-btn {
+.console-toolbar .console-buttons { display: flex; gap: 5px; }
+#clear-console-btn, #toggle-console-btn {
     padding: 4px 8px; font-size: 12px;
 }
+#toggle-console-btn { min-width: 25px; }
 
 #console-output {
     flex-grow: 1; overflow-y: auto; padding: 5px 10px; font-family: 'Courier New', Courier, monospace; font-size: 14px;
@@ -148,18 +151,36 @@ body.is-resizing-h .preview-instance {
 #main-container.split-view #pane-right { display: flex; width: calc(50% - 5px); }
 #main-container.split-view #resizer-v { display: block; }
 
-/* Fullscreen Preview */
-.fullscreen-preview #main-container,
-.fullscreen-preview #console-container,
-.fullscreen-preview #resizer-h {
+/* Console Closed State */
+#editor-area-wrapper.console-closed #console-container,
+#editor-area-wrapper.console-closed #resizer-h {
     display: none;
 }
-.fullscreen-preview #editor-area-wrapper {
+#editor-area-wrapper.console-closed #main-container {
+    height: 100%; /* Take full height when console is closed */
+}
+
+/* Fullscreen Preview State */
+body.fullscreen-preview .toolbar {
+    /* Optionally hide parts of the toolbar */
+}
+body.fullscreen-preview #main-container,
+body.fullscreen-preview #console-container,
+body.fullscreen-preview #resizer-h,
+body.fullscreen-preview #resizer-v,
+body.fullscreen-preview #pane-right,
+body.fullscreen-preview #pane-left .tab-bar {
+    display: none;
+}
+body.fullscreen-preview #editor-area-wrapper {
     height: calc(100vh - 50px);
 }
-.fullscreen-preview #pane-left {
-    width: 100% !important; /* Override inline styles */
+body.fullscreen-preview #pane-left {
+    width: 100% !important; /* Override inline styles from resizer */
     height: 100%;
+}
+body.fullscreen-preview #pane-left #preview-left {
+    display: block !important;
 }
     </style>
 </head>
@@ -173,11 +194,17 @@ body.is-resizing-h .preview-instance {
                 <span class="slider"></span>
                 Auto-update
             </label>
-            <button id="split-view-btn">Toggle Split Screen</button>
-            <button id="fullscreen-btn">Toggle Full Screen</button>
-            <button id="preview-new-tab-btn">Open Preview in New Tab</button>
-            <button id="save-project-btn">Save Project</button>
-            <button id="import-files-btn">Import Files</button>
+            <div class="button-group">
+                <button id="format-code-btn" title="Format the code in the active editor">Format Code</button>
+                <button id="split-view-btn">Toggle Split Screen</button>
+                <button id="fullscreen-btn">Fullscreen Preview</button>
+            </div>
+            <div class="button-group">
+                <button id="preview-new-tab-btn">Open in New Tab</button>
+                <button id="save-project-btn">Save as HTML</button>
+                <button id="import-files-btn">Import Files</button>
+                <button id="reset-project-btn" title="Reset all code to the default template">Reset Project</button>
+            </div>
         </div>
     </div>
 
@@ -211,7 +238,10 @@ body.is-resizing-h .preview-instance {
         <div id="console-container">
             <div class="console-toolbar">
                 <span>Console</span>
-                <button id="clear-console-btn">Clear</button>
+                <div class="console-buttons">
+                    <button id="clear-console-btn">Clear</button>
+                    <button id="toggle-console-btn" title="Toggle Console Visibility">▾</button>
+                </div>
             </div>
             <div id="console-output"></div>
         </div>
@@ -224,9 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const APP_STORAGE_KEY = 'webCodeEditorState';
     const state = {
         isSplitView: false,
+        isConsoleOpen: true,
+        isFullscreen: false,
         autoUpdate: true,
         activeLeftTab: 'html',
         activeRightTab: 'preview',
+        preFullscreenLeftTab: 'html', // To restore tab after exiting fullscreen
         leftPaneWidth: 50,  // Store as percentage
         consoleHeight: 200,  // Store as pixels
     };
@@ -248,6 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewNewTabBtn = document.getElementById('preview-new-tab-btn');
     const saveProjectBtn = document.getElementById('save-project-btn');
     const importFilesBtn = document.getElementById('import-files-btn');
+    const resetProjectBtn = document.getElementById('reset-project-btn');
+    const formatCodeBtn = document.getElementById('format-code-btn');
     const runBtn = document.getElementById('run-btn');
     const autoUpdateCheckbox = document.getElementById('auto-update-checkbox');
     const resizerV = document.getElementById('resizer-v');
@@ -255,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const consoleContainer = document.getElementById('console-container');
     const consoleOutput = document.getElementById('console-output');
     const clearConsoleBtn = document.getElementById('clear-console-btn');
+    const toggleConsoleBtn = document.getElementById('toggle-console-btn');
     const previewIframes = document.querySelectorAll('.preview-iframe');
     const panes = {
         left:  { el: document.getElementById('pane-left'),  tabBar: document.getElementById('tab-bar-left'),  editorEl: document.getElementById('editor-left'),  previewEl: document.getElementById('preview-left'),  editor: null },
@@ -278,6 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
             css: files.css.model?.getValue() || files.css.defaultValue,
             js: files.js.model?.getValue() || files.js.defaultValue,
         };
+        // Don't save transient state
+        delete stateToSave.preFullscreenLeftTab;
+        delete stateToSave.isFullscreen;
         localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(stateToSave));
     }
 
@@ -330,12 +369,15 @@ document.addEventListener('DOMContentLoaded', () => {
         input.onchange = importFiles;
         input.click();
     });
+    resetProjectBtn.addEventListener('click', resetProject);
+    formatCodeBtn.addEventListener('click', formatActiveEditor);
     runBtn.addEventListener('click', updateAllPreviews);
     autoUpdateCheckbox.addEventListener('change', (e) => {
         state.autoUpdate = e.target.checked;
         saveState();
     });
     clearConsoleBtn.addEventListener('click', () => consoleOutput.innerHTML = '');
+    toggleConsoleBtn.addEventListener('click', toggleConsole);
 
     panes.left.tabBar.addEventListener('click', e => handleTabClick(e, 'left'));
     panes.right.tabBar.addEventListener('click', e => handleTabClick(e, 'right'));
@@ -348,86 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             updateAllPreviews();
         }
+        if (e.key === 'Escape' && state.isFullscreen) {
+            toggleFullScreen();
+        }
     });
 
     // Clean up preview windows on unload
     window.addEventListener('beforeunload', () => {
-        previewWindows.forEach(win => {
-            if (win && !win.closed) win.close();
-        });
+        previewWindows.forEach(win => { if (win && !win.closed) win.close(); });
     });
 
     // --- RESIZER LOGIC ---
-    function startResizeV(e) {
-        e.preventDefault();
-        document.body.classList.add('is-resizing-v');
-        
-        const startX = e.clientX;
-        const containerRect = mainContainer.getBoundingClientRect();
-        const startLeftWidth = panes.left.el.getBoundingClientRect().width;
-        
-        function onMove(ev) {
-            const currentX = ev.clientX;
-            const deltaX = currentX - startX;
-            let newLeftWidth = startLeftWidth + deltaX;
-            
-            // Enforce minimum widths
-            const minWidth = 150;
-            const maxLeftWidth = containerRect.width - minWidth - 5; // 5px for resizer
-            
-            newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth));
-            const newRightWidth = containerRect.width - newLeftWidth - 5;
-            
-            // Apply the new widths
-            panes.left.el.style.width = `${newLeftWidth}px`;
-            panes.right.el.style.width = `${newRightWidth}px`;
-            
-            // Trigger layout update for Monaco editors
-            if (panes.left.editor) panes.left.editor.layout();
-            if (panes.right.editor) panes.right.editor.layout();
-        }
-
-        function onUp() {
-            document.body.classList.remove('is-resizing-v');
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            
-            // Save the new width as percentage
-            const finalLeftWidth = panes.left.el.getBoundingClientRect().width;
-            const containerWidth = mainContainer.getBoundingClientRect().width;
-            state.leftPaneWidth = (finalLeftWidth / containerWidth) * 100;
-            saveState();
-        }
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    }
-    
-    function startResizeH(e) {
-        e.preventDefault();
-        document.body.classList.add('is-resizing-h');
-        const startY = e.clientY;
-        const startHeight = consoleContainer.getBoundingClientRect().height;
-        const totalHeight = editorAreaWrapper.getBoundingClientRect().height;
-
-        function onMove(ev) {
-            const delta = startY - ev.clientY;
-            let newHeight = startHeight + delta;
-            newHeight = Math.max(45, Math.min(newHeight, totalHeight - 100));
-            consoleContainer.style.height = newHeight + 'px';
-        }
-
-        function onUp() {
-            document.body.classList.remove('is-resizing-h');
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            state.consoleHeight = parseInt(consoleContainer.style.height);
-            saveState();
-        }
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    }
+    function startResizeV(e) { e.preventDefault(); document.body.classList.add('is-resizing-v'); const startX = e.clientX; const containerRect = mainContainer.getBoundingClientRect(); const startLeftWidth = panes.left.el.getBoundingClientRect().width; function onMove(ev) { const currentX = ev.clientX; const deltaX = currentX - startX; let newLeftWidth = startLeftWidth + deltaX; const minWidth = 150; const maxLeftWidth = containerRect.width - minWidth - 5; newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth)); const newRightWidth = containerRect.width - newLeftWidth - 5; panes.left.el.style.width = `${newLeftWidth}px`; panes.right.el.style.width = `${newRightWidth}px`; if (panes.left.editor) panes.left.editor.layout(); if (panes.right.editor) panes.right.editor.layout(); } function onUp() { document.body.classList.remove('is-resizing-v'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); const finalLeftWidth = panes.left.el.getBoundingClientRect().width; const containerWidth = mainContainer.getBoundingClientRect().width; state.leftPaneWidth = (finalLeftWidth / containerWidth) * 100; saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
+    function startResizeH(e) { e.preventDefault(); document.body.classList.add('is-resizing-h'); const startY = e.clientY; const startHeight = consoleContainer.getBoundingClientRect().height; const totalHeight = editorAreaWrapper.getBoundingClientRect().height; function onMove(ev) { const delta = startY - ev.clientY; let newHeight = startHeight + delta; newHeight = Math.max(45, Math.min(newHeight, totalHeight - 100)); consoleContainer.style.height = newHeight + 'px'; } function onUp() { document.body.classList.remove('is-resizing-h'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); state.consoleHeight = parseInt(consoleContainer.style.height); saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
 
     // --- CORE UI LOGIC ---
     function toggleSplitView() {
@@ -436,11 +411,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function toggleFullScreen() {
-        document.body.classList.toggle('fullscreen-preview');
-        // Ensure the preview is active in the main pane
-        if (document.body.classList.contains('fullscreen-preview')) {
+        state.isFullscreen = !state.isFullscreen;
+        if (state.isFullscreen) {
+            state.preFullscreenLeftTab = state.activeLeftTab;
             state.activeLeftTab = 'preview';
+        } else {
+            state.activeLeftTab = state.preFullscreenLeftTab;
         }
+        renderUI();
+    }
+    
+    function toggleConsole() {
+        state.isConsoleOpen = !state.isConsoleOpen;
         renderUI();
     }
 
@@ -455,15 +437,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderUI() {
-        // Apply split view class
+        // Apply global layout classes
+        document.body.classList.toggle('fullscreen-preview', state.isFullscreen);
+        editorAreaWrapper.classList.toggle('console-closed', !state.isConsoleOpen);
         mainContainer.classList.toggle('split-view', state.isSplitView);
+        
+        // Update console toggle button icon
+        toggleConsoleBtn.textContent = state.isConsoleOpen ? '▾' : '▴';
         
         // Set pane widths
         if (state.isSplitView) {
             const containerWidth = mainContainer.offsetWidth;
-            const leftWidth = (containerWidth - 5) * (state.leftPaneWidth / 100); // Subtract resizer width
+            const leftWidth = (containerWidth - 5) * (state.leftPaneWidth / 100);
             const rightWidth = containerWidth - leftWidth - 5;
-            
             panes.left.el.style.width = `${leftWidth}px`;
             panes.right.el.style.width = `${rightWidth}px`;
         } else {
@@ -475,10 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
         consoleContainer.style.height = `${state.consoleHeight}px`;
 
         // Render panes and tab bars
-        renderPane('left',  state.activeLeftTab);
-        renderPane('right', state.activeRightTab);
-        renderTabBar(panes.left.tabBar,  state.activeLeftTab);
-        renderTabBar(panes.right.tabBar, state.activeRightTab);
+        if (!state.isFullscreen) {
+            renderPane('left',  state.activeLeftTab);
+            renderPane('right', state.activeRightTab);
+            renderTabBar(panes.left.tabBar,  state.activeLeftTab);
+            renderTabBar(panes.right.tabBar, state.activeRightTab);
+        } else {
+            // In fullscreen, we only care about the left preview pane
+            panes.left.previewEl.style.display = 'block';
+            panes.left.editorEl.style.display = 'none';
+        }
         
         // Update Monaco layout after DOM changes
         setTimeout(() => {
@@ -525,21 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const css  = files.css.model?.getValue() || '';
         const js   = files.js.model?.getValue() || '';
 
-        const consoleInterceptor = `
-            <script>
-                const _log = (type, args) => window.parent.postMessage({ source: 'iframe-console', type, message: Array.from(args).map(arg => {
-                    try {
-                        return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
-                    } catch (e) {
-                        return String(arg);
-                    }
-                }).join(' ') }, '*');
-                console.log = (...args) => _log('log', args);
-                console.warn = (...args) => _log('warn', args);
-                console.error = (...args) => _log('error', args);
-                window.addEventListener('error', e => _log('error', [e.message]));
-            <\/script>
-        `;
+        const consoleInterceptor = `<script>const _log = (type, args) => window.parent.postMessage({ source: 'iframe-console', type, message: Array.from(args).map(arg => { try { return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg); } catch (e) { return String(arg); } }).join(' ') }, '*'); console.log = (...args) => _log('log', args); console.warn = (...args) => _log('warn', args); console.error = (...args) => _log('error', args); window.addEventListener('error', e => _log('error', [e.message])); <\/script>`;
         
         return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style>${consoleInterceptor}</head><body>${html}<script>${js}<\/script></body></html>`;
     }
@@ -549,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { type, message } = event.data;
             const entry = document.createElement('div');
             entry.className = `log-entry log-${type}`;
-            entry.textContent = `[${type}] ${message}`;
+            entry.textContent = `[${type.toUpperCase()}] ${message}`;
             consoleOutput.appendChild(entry);
             consoleOutput.scrollTop = consoleOutput.scrollHeight;
         }
@@ -557,43 +535,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateAllPreviews() {
         const content = generatePreviewContent();
-        
-        // Update iframe previews
-        previewIframes.forEach(iframe => {
-            iframe.srcdoc = content;
-        });
-        
-        // Update any open preview windows
+        previewIframes.forEach(iframe => { iframe.srcdoc = content; });
         previewWindows = previewWindows.filter(win => !win.closed);
-        previewWindows.forEach(win => {
-            try {
-                win.document.open();
-                win.document.write(content);
-                win.document.close();
-            } catch(e) {
-                console.error("Could not update preview window:", e);
-            }
-        });
+        previewWindows.forEach(win => { try { win.document.open(); win.document.write(content); win.document.close(); } catch(e) { console.error("Could not update preview window:", e); } });
     }
 
     function openPreviewInNewTab() {
         try {
             const win = window.open('', '_blank');
-            if (!win) {
-                throw new Error("Popup blocked");
-            }
-            
-            // Add to tracked windows
+            if (!win) { throw new Error("Popup blocked"); }
             previewWindows.push(win);
-            
-            // Write initial content
             win.document.write(generatePreviewContent());
             win.document.close();
-            
-            // Set up auto-update for this window
-            if (state.autoUpdate) {
-                // The window will be updated through updateAllPreviews()
-            }
         } catch(e) {
             console.error("Could not open new tab:", e);
             alert("Could not open new tab. Please check your popup blocker settings.");
@@ -616,15 +569,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const content = e.target.result;
-                if (file.name.endsWith('.html')) {
-                    files.html.model.setValue(content);
-                } else if (file.name.endsWith('.css')) {
-                    files.css.model.setValue(content);
-                } else if (file.name.endsWith('.js')) {
-                    files.js.model.setValue(content);
-                }
+                if (file.name.endsWith('.html')) files.html.model.setValue(content);
+                else if (file.name.endsWith('.css')) files.css.model.setValue(content);
+                else if (file.name.endsWith('.js')) files.js.model.setValue(content);
             };
             reader.readAsText(file);
+        }
+    }
+
+    function formatActiveEditor() {
+        // Format left pane if it's an editor
+        if (files[state.activeLeftTab].language) {
+            panes.left.editor.getAction('editor.action.formatDocument').run();
+        }
+        // Format right pane if split view is active and it's an editor
+        if (state.isSplitView && files[state.activeRightTab].language) {
+            panes.right.editor.getAction('editor.action.formatDocument').run();
+        }
+    }
+
+    function resetProject() {
+        if (confirm("Are you sure you want to reset the project? All your current code will be lost.")) {
+            // Reset file content
+            for (const id in files) {
+                if (files[id].model) {
+                    files[id].model.setValue(files[id].defaultValue);
+                }
+            }
+            // Reset UI state to defaults
+            state.isSplitView = false;
+            state.isConsoleOpen = true;
+            state.activeLeftTab = 'html';
+            state.activeRightTab = 'preview';
+            
+            // Re-render everything
+            renderUI();
+            updateAllPreviews(); // update preview with default content
         }
     }
 });
