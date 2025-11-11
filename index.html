@@ -1,194 +1,380 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enhanced Web Code Editor</title>
     <style>
-:root {
-    --bg-color: #1e1e1e;
-    --editor-bg: #252526;
-    --toolbar-bg: #3c3c3c;
-    --tab-bar-bg: #2d2d2d;
-    --tab-inactive-bg: #2d2d2d;
-    --tab-active-bg: #1e1e1e;
-    --border-color: #444444;
-    --resizer-color: #5a5a5a;
-    --text-color: #cccccc;
-    --button-bg: #5a5a5a;
-    --button-hover-bg: #6a6a6a;
-    --console-bg: #252526;
-    --console-header: #3c3c3c;
-}
+        :root {
+            --bg-color: #1e1e1e;
+            --editor-bg: #252526;
+            --toolbar-bg: #3c3c3c;
+            --tab-bar-bg: #2d2d2d;
+            --tab-inactive-bg: #2d2d2d;
+            --tab-active-bg: #1e1e1e;
+            --border-color: #444444;
+            --resizer-color: #5a5a5a;
+            --text-color: #cccccc;
+            --button-bg: #5a5a5a;
+            --button-hover-bg: #6a6a6a;
+            --console-bg: #252526;
+            --console-header: #3c3c3c;
+        }
 
-body, html {
-    margin: 0; padding: 0; height: 100%; width: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    color: var(--text-color); background-color: var(--bg-color); overflow: hidden;
-}
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
 
-body.is-resizing-v, body.is-resizing-h {
-    user-select: none;
-}
-body.is-resizing-v { cursor: col-resize; }
-body.is-resizing-h { cursor: row-resize; }
+        body.is-resizing-v,
+        body.is-resizing-h {
+            user-select: none;
+        }
 
-/* Disable pointer events on iframes and editors during resize */
-body.is-resizing-v iframe,
-body.is-resizing-h iframe,
-body.is-resizing-v .editor-instance,
-body.is-resizing-h .editor-instance,
-body.is-resizing-v .preview-instance,
-body.is-resizing-h .preview-instance {
-    pointer-events: none !important;
-}
+        body.is-resizing-v {
+            cursor: col-resize;
+        }
 
-.toolbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--toolbar-bg); padding: 5px 20px; height: 50px; box-sizing: border-box; }
-.toolbar h1 { font-size: 1.2em; margin: 0; }
-.toolbar .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.toolbar button { background-color: var(--button-bg); color: var(--text-color); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-.toolbar button:hover { background-color: var(--button-hover-bg); }
-.toolbar .button-group { display: flex; gap: 10px; border-left: 1px solid #555; padding-left: 10px;}
+        body.is-resizing-h {
+            cursor: row-resize;
+        }
+
+        /* Disable pointer events on iframes and editors during resize */
+        body.is-resizing-v iframe,
+        body.is-resizing-h iframe,
+        body.is-resizing-v .editor-instance,
+        body.is-resizing-h .editor-instance,
+        body.is-resizing-v .preview-instance,
+        body.is-resizing-h .preview-instance {
+            pointer-events: none !important;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--toolbar-bg);
+            padding: 5px 20px;
+            height: 50px;
+            box-sizing: border-box;
+        }
+
+        .toolbar h1 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+
+        .toolbar .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toolbar button {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toolbar button:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        .toolbar button.active {
+            background-color: #2b6fd6;
+            color: white;
+        }
+
+        .toolbar .button-group {
+            display: flex;
+            gap: 10px;
+            border-left: 1px solid #555;
+            padding-left: 10px;
+        }
 
 
-/* Auto-update Toggle Switch */
-.toggle-switch { display: inline-flex; align-items: center; cursor: pointer; gap: 8px; font-size: 14px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-switch .slider { position: relative; width: 34px; height: 20px; background-color: #444; border-radius: 20px; transition: background-color 0.2s; }
-.toggle-switch .slider::before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; border-radius: 50%; transition: transform 0.2s; }
-.toggle-switch input:checked + .slider { background-color: #4caf50; }
-.toggle-switch input:checked + .slider::before { transform: translateX(14px); }
+        /* Auto-update Toggle Switch */
+        .toggle-switch {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            gap: 8px;
+            font-size: 14px;
+        }
 
-#editor-area-wrapper {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 50px);
-}
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-#main-container {
-    display: flex;
-    flex-grow: 1;
-    min-height: 100px;
-    overflow: hidden;
-}
+        .toggle-switch .slider {
+            position: relative;
+            width: 34px;
+            height: 20px;
+            background-color: #444;
+            border-radius: 20px;
+            transition: background-color 0.2s;
+        }
 
-.pane {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-width: 150px;
-    position: relative;
-}
+        .toggle-switch .slider::before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
 
-.tab-bar { display: flex; background-color: var(--tab-bar-bg); height: 40px; flex-shrink: 0; }
-.tab { padding: 0 20px; line-height: 40px; background-color: var(--tab-inactive-bg); cursor: pointer; border-right: 1px solid var(--border-color); }
-.tab.active { background-color: var(--tab-active-bg); }
-.tab:hover { background-color: #3f3f3f; }
+        .toggle-switch input:checked+.slider {
+            background-color: #4caf50;
+        }
 
-.content-area { flex-grow: 1; position: relative; overflow: hidden; }
-.editor-instance, .preview-instance {
-    height: 100%;
-    width: 100%;
-    display: none;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-.preview-iframe { width: 100%; height: 100%; border: none; background-color: #fff; }
+        .toggle-switch input:checked+.slider::before {
+            transform: translateX(14px);
+        }
 
-#resizer-v {
-    width: 5px;
-    background-color: var(--resizer-color);
-    cursor: col-resize;
-    flex-shrink: 0;
-    display: none;
-    position: relative;
-    z-index: 10;
-}
+        #editor-area-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 50px);
+        }
 
-#resizer-h {
-    height: 5px;
-    background-color: var(--resizer-color);
-    cursor: row-resize;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-}
+        #main-container {
+            display: flex;
+            flex-grow: 1;
+            min-height: 100px;
+            overflow: hidden;
+        }
 
-#console-container {
-    display: flex;
-    flex-direction: column;
-    height: 200px;
-    min-height: 45px;
-    flex-shrink: 0;
-    background-color: var(--console-bg);
-}
+        .pane {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-width: 150px;
+            position: relative;
+        }
 
-.console-toolbar {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 10px; height: 35px; background-color: var(--console-header);
-    font-weight: bold; flex-shrink: 0; border-bottom: 1px solid var(--border-color);
-}
-.console-toolbar .console-buttons { display: flex; gap: 5px; }
-#clear-console-btn, #toggle-console-btn {
-    padding: 4px 8px; font-size: 12px;
-}
-#toggle-console-btn { min-width: 25px; }
+        .tab-bar {
+            display: flex;
+            background-color: var(--tab-bar-bg);
+            height: 40px;
+            flex-shrink: 0;
+        }
 
-#console-output {
-    flex-grow: 1; overflow-y: auto; padding: 5px 10px; font-family: 'Courier New', Courier, monospace; font-size: 14px;
-}
+        .tab {
+            padding: 0 20px;
+            line-height: 40px;
+            background-color: var(--tab-inactive-bg);
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+        }
 
-#console-output .log-entry { padding: 2px 0; border-bottom: 1px solid #333; word-wrap: break-word; }
-#console-output .log-warn { color: #f1c40f; }
-#console-output .log-error { color: #e74c3c; }
+        .tab.active {
+            background-color: var(--tab-active-bg);
+        }
 
-/* --- LAYOUTS --- */
-#pane-left { width: 100%; }
-#pane-right { display: none; width: 0; }
+        .tab:hover {
+            background-color: #3f3f3f;
+        }
 
-#main-container.split-view #pane-left { width: 50%; }
-#main-container.split-view #pane-right { display: flex; width: calc(50% - 5px); }
-#main-container.split-view #resizer-v { display: block; }
+        .content-area {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
 
-/* Console Closed State */
-#editor-area-wrapper.console-closed #console-container,
-#editor-area-wrapper.console-closed #resizer-h {
-    display: none;
-}
-#editor-area-wrapper.console-closed #main-container {
-    height: 100%; /* Take full height when console is closed */
-}
+        .editor-instance,
+        .preview-instance {
+            height: 100%;
+            width: 100%;
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
 
-/* Fullscreen Preview State */
-body.fullscreen-preview .toolbar {
-    /* Optionally hide parts of the toolbar */
-}
-body.fullscreen-preview #main-container,
-body.fullscreen-preview #console-container,
-body.fullscreen-preview #resizer-h,
-body.fullscreen-preview #resizer-v,
-body.fullscreen-preview #pane-right,
-body.fullscreen-preview #pane-left .tab-bar {
-    display: none;
-}
-body.fullscreen-preview #editor-area-wrapper {
-    height: calc(100vh - 50px);
-}
-body.fullscreen-preview #pane-left {
-    width: 100% !important; /* Override inline styles from resizer */
-    height: 100%;
-}
-body.fullscreen-preview #pane-left #preview-left {
-    display: block !important;
-}
-    </style>
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #fff;
+        }
+
+        #resizer-v {
+            width: 5px;
+            background-color: var(--resizer-color);
+            cursor: col-resize;
+            flex-shrink: 0;
+            display: none;
+            position: relative;
+            z-index: 10;
+        }
+
+        #resizer-h {
+            height: 5px;
+            background-color: var(--resizer-color);
+            cursor: row-resize;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        #console-container {
+            display: flex;
+            flex-direction: column;
+            height: 200px;
+            min-height: 45px;
+            flex-shrink: 0;
+            background-color: var(--console-bg);
+        }
+
+        .console-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            height: 35px;
+            background-color: var(--console-header);
+            font-weight: bold;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .console-toolbar .console-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        #clear-console-btn,
+        #toggle-console-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        #toggle-console-btn {
+            min-width: 25px;
+        }
+
+        #console-output {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 5px 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+
+        #console-output .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #333;
+            word-wrap: break-word;
+        }
+
+        #console-output .log-warn {
+            color: #f1c40f;
+        }
+
+        #console-output .log-error {
+            color: #e74c3c;
+        }
+
+        /* --- LAYOUTS --- */
+        #pane-left {
+            width: 100%;
+        }
+
+        #pane-right {
+            display: none;
+            width: 0;
+        }
+
+        #main-container.split-view #pane-left {
+            width: 50%;
+        }
+
+        #main-container.split-view #pane-right {
+            display: flex;
+            width: calc(50% - 5px);
+        }
+
+        #main-container.split-view #resizer-v {
+            display: block;
+        }
+
+        /* Console Closed State */
+        #editor-area-wrapper.console-closed #console-container,
+        #editor-area-wrapper.console-closed #resizer-h {
+            display: none;
+        }
+
+        #editor-area-wrapper.console-closed #main-container {
+            height: 100%;
+            /* Take full height when console is closed */
+        }
+
+        /* Fullscreen Preview State */
+        body.fullscreen-preview .toolbar {
+            display: none;
+        }
+
+        body.fullscreen-preview #main-container,
+        body.fullscreen-preview #console-container,
+        body.fullscreen-preview #resizer-h,
+        body.fullscreen-preview #resizer-v,
+        body.fullscreen-preview #pane-right,
+        body.fullscreen-preview #pane-left .tab-bar {
+            display: none;
+        }
+
+        body.fullscreen-preview #editor-area-wrapper {
+            height: calc(100vh - 50px);
+        }
+
+        body.fullscreen-preview #pane-left {
+            width: 100% !important;
+            /* Override inline styles from resizer */
+            height: 100%;
+        }
+
+        body.fullscreen-preview #pane-left #preview-left {
+            display: block !important;
+        }
+    
+    /* Inspector overlay */
+    .inspector-overlay { position: absolute; pointer-events: none; z-index: 10000; }
+    .inspector-overlay .box { position: absolute; border: 2px dashed rgba(80,160,255,0.95); background: rgba(80,160,255,0.06); box-sizing: border-box; }
+    .inspector-tooltip { position: fixed; z-index: 10001; background: #1e1e1e; color: var(--text-color); padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; pointer-events: none; max-width: 360px; }
+
+    /* Console improvements */
+    #console-output { background: var(--console-bg); color: var(--text-color); font-family: monospace; font-size: 13px; }
+    #console-output .log-entry { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    #console-output .log-warn { color: #f1c40f; }
+    #console-output .log-error { color: #e74c3c; }
+        </style>
 </head>
+
 <body>
     <div class="toolbar">
         <h1>Web Code Editor</h1>
         <div class="buttons">
             <button id="run-btn" title="Manually update the preview (Ctrl/Cmd + S)">Run</button>
+            <button id="inspect-btn" title="Toggle Element Inspector">Inspect</button>
             <label class="toggle-switch">
                 <input type="checkbox" id="auto-update-checkbox" checked>
                 <span class="slider"></span>
@@ -215,7 +401,8 @@ body.fullscreen-preview #pane-left #preview-left {
                 <div class="content-area">
                     <div class="editor-instance" id="editor-left"></div>
                     <div class="preview-instance" id="preview-left">
-                        <iframe class="preview-iframe" id="preview-iframe-left" sandbox="allow-scripts allow-same-origin"></iframe>
+                        <iframe class="preview-iframe" id="preview-iframe-left"
+                            sandbox="allow-scripts allow-same-origin"></iframe>
                     </div>
                 </div>
             </div>
@@ -227,7 +414,8 @@ body.fullscreen-preview #pane-left #preview-left {
                 <div class="content-area">
                     <div class="editor-instance" id="editor-right"></div>
                     <div class="preview-instance" id="preview-right">
-                         <iframe class="preview-iframe" id="preview-iframe-right" sandbox="allow-scripts allow-same-origin"></iframe>
+                        <iframe class="preview-iframe" id="preview-iframe-right"
+                            sandbox="allow-scripts allow-same-origin"></iframe>
                     </div>
                 </div>
             </div>
@@ -249,365 +437,425 @@ body.fullscreen-preview #pane-left #preview-left {
 
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- STATE & CONSTANTS ---
-    const APP_STORAGE_KEY = 'webCodeEditorState';
-    const state = {
-        isSplitView: false,
-        isConsoleOpen: true,
-        isFullscreen: false,
-        autoUpdate: true,
-        activeLeftTab: 'html',
-        activeRightTab: 'preview',
-        preFullscreenLeftTab: 'html', // To restore tab after exiting fullscreen
-        leftPaneWidth: 50,  // Store as percentage
-        consoleHeight: 200,  // Store as pixels
-    };
-
-    const files = {
-        html: { name: 'HTML', language: 'html', model: null, defaultValue: `<h1>Hello, World!</h1>\n<p>Edit this content to see live updates.</p>\n<button onclick="testLog()">Log to Console</button>` },
-        css: { name: 'CSS', language: 'css', model: null, defaultValue: `body {\n  font-family: sans-serif;\n  color: #333;\n  background-color: #f4f4f4;\n  padding: 20px;\n}` },
-        js:  { name: 'JavaScript', language: 'javascript', model: null, defaultValue: `// Your JavaScript code here\nconsole.log('Hello from the editor!');\n\nfunction testLog() {\n  console.log("Button was clicked!");\n  console.warn("This is a warning.");\n  console.error("This is an error.");\n}` },
-        preview: { name: 'Preview', language: null, model: null },
-    };
-
-    let previewWindows = []; // Track opened preview windows
-
-    // --- DOM ELEMENTS ---
-    const mainContainer = document.getElementById('main-container');
-    const editorAreaWrapper = document.getElementById('editor-area-wrapper');
-    const splitViewBtn = document.getElementById('split-view-btn');
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
-    const previewNewTabBtn = document.getElementById('preview-new-tab-btn');
-    const saveProjectBtn = document.getElementById('save-project-btn');
-    const importFilesBtn = document.getElementById('import-files-btn');
-    const resetProjectBtn = document.getElementById('reset-project-btn');
-    const formatCodeBtn = document.getElementById('format-code-btn');
-    const runBtn = document.getElementById('run-btn');
-    const autoUpdateCheckbox = document.getElementById('auto-update-checkbox');
-    const resizerV = document.getElementById('resizer-v');
-    const resizerH = document.getElementById('resizer-h');
-    const consoleContainer = document.getElementById('console-container');
-    const consoleOutput = document.getElementById('console-output');
-    const clearConsoleBtn = document.getElementById('clear-console-btn');
-    const toggleConsoleBtn = document.getElementById('toggle-console-btn');
-    const previewIframes = document.querySelectorAll('.preview-iframe');
-    const panes = {
-        left:  { el: document.getElementById('pane-left'),  tabBar: document.getElementById('tab-bar-left'),  editorEl: document.getElementById('editor-left'),  previewEl: document.getElementById('preview-left'),  editor: null },
-        right: { el: document.getElementById('pane-right'), tabBar: document.getElementById('tab-bar-right'), editorEl: document.getElementById('editor-right'), previewEl: document.getElementById('preview-right'), editor: null }
-    };
-
-    // --- UTILITY FUNCTIONS ---
-    function debounce(func, delay) {
-        let timeout;
-        return function(...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), delay);
-        };
-    }
-
-    // --- STATE MANAGEMENT (localStorage) ---
-    function saveState() {
-        const stateToSave = {
-            ...state,
-            html: files.html.model?.getValue() || files.html.defaultValue,
-            css: files.css.model?.getValue() || files.css.defaultValue,
-            js: files.js.model?.getValue() || files.js.defaultValue,
-        };
-        // Don't save transient state
-        delete stateToSave.preFullscreenLeftTab;
-        delete stateToSave.isFullscreen;
-        localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(stateToSave));
-    }
-
-    function loadState() {
-        const savedState = JSON.parse(localStorage.getItem(APP_STORAGE_KEY));
-        if (!savedState) return;
-
-        // Load content
-        files.html.defaultValue = savedState.html || files.html.defaultValue;
-        files.css.defaultValue = savedState.css || files.css.defaultValue;
-        files.js.defaultValue = savedState.js || files.js.defaultValue;
-
-        // Load UI state
-        Object.assign(state, savedState);
-        autoUpdateCheckbox.checked = state.autoUpdate;
-    }
-
-    // --- MONACO EDITOR INITIALIZATION ---
-    loadState();
-    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
-    require(['vs/editor/editor.main'], () => {
-        const debouncedSaveAndUpdate = debounce(() => {
-            if (state.autoUpdate) updateAllPreviews();
-            saveState();
-        }, 300);
-
-        for (const id in files) {
-            if (files[id].language) {
-                files[id].model = monaco.editor.createModel(files[id].defaultValue, files[id].language);
-                files[id].model.onDidChangeContent(debouncedSaveAndUpdate);
-            }
-        }
-        const commonConfig = { theme: 'vs-dark', automaticLayout: true };
-        panes.left.editor  = monaco.editor.create(panes.left.editorEl, commonConfig);
-        panes.right.editor = monaco.editor.create(panes.right.editorEl, commonConfig);
-        
-        renderUI();
-    });
-
-    // --- EVENT LISTENERS ---
-    splitViewBtn.addEventListener('click', toggleSplitView);
-    fullscreenBtn.addEventListener('click', toggleFullScreen);
-    previewNewTabBtn.addEventListener('click', openPreviewInNewTab);
-    saveProjectBtn.addEventListener('click', saveProject);
-    importFilesBtn.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.multiple = true;
-        input.accept = '.html,.css,.js';
-        input.onchange = importFiles;
-        input.click();
-    });
-    resetProjectBtn.addEventListener('click', resetProject);
-    formatCodeBtn.addEventListener('click', formatActiveEditor);
-    runBtn.addEventListener('click', updateAllPreviews);
-    autoUpdateCheckbox.addEventListener('change', (e) => {
-        state.autoUpdate = e.target.checked;
-        saveState();
-    });
-    clearConsoleBtn.addEventListener('click', () => consoleOutput.innerHTML = '');
-    toggleConsoleBtn.addEventListener('click', toggleConsole);
-
-    panes.left.tabBar.addEventListener('click', e => handleTabClick(e, 'left'));
-    panes.right.tabBar.addEventListener('click', e => handleTabClick(e, 'right'));
-    
-    resizerV.addEventListener('mousedown', startResizeV);
-    resizerH.addEventListener('mousedown', startResizeH);
-
-    window.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            updateAllPreviews();
-        }
-        if (e.key === 'Escape' && state.isFullscreen) {
-            toggleFullScreen();
-        }
-    });
-
-    // Clean up preview windows on unload
-    window.addEventListener('beforeunload', () => {
-        previewWindows.forEach(win => { if (win && !win.closed) win.close(); });
-    });
-
-    // --- RESIZER LOGIC ---
-    function startResizeV(e) { e.preventDefault(); document.body.classList.add('is-resizing-v'); const startX = e.clientX; const containerRect = mainContainer.getBoundingClientRect(); const startLeftWidth = panes.left.el.getBoundingClientRect().width; function onMove(ev) { const currentX = ev.clientX; const deltaX = currentX - startX; let newLeftWidth = startLeftWidth + deltaX; const minWidth = 150; const maxLeftWidth = containerRect.width - minWidth - 5; newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth)); const newRightWidth = containerRect.width - newLeftWidth - 5; panes.left.el.style.width = `${newLeftWidth}px`; panes.right.el.style.width = `${newRightWidth}px`; if (panes.left.editor) panes.left.editor.layout(); if (panes.right.editor) panes.right.editor.layout(); } function onUp() { document.body.classList.remove('is-resizing-v'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); const finalLeftWidth = panes.left.el.getBoundingClientRect().width; const containerWidth = mainContainer.getBoundingClientRect().width; state.leftPaneWidth = (finalLeftWidth / containerWidth) * 100; saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
-    function startResizeH(e) { e.preventDefault(); document.body.classList.add('is-resizing-h'); const startY = e.clientY; const startHeight = consoleContainer.getBoundingClientRect().height; const totalHeight = editorAreaWrapper.getBoundingClientRect().height; function onMove(ev) { const delta = startY - ev.clientY; let newHeight = startHeight + delta; newHeight = Math.max(45, Math.min(newHeight, totalHeight - 100)); consoleContainer.style.height = newHeight + 'px'; } function onUp() { document.body.classList.remove('is-resizing-h'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); state.consoleHeight = parseInt(consoleContainer.style.height); saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
-
-    // --- CORE UI LOGIC ---
-    function toggleSplitView() {
-        state.isSplitView = !state.isSplitView;
-        renderUI();
-    }
-    
-    function toggleFullScreen() {
-        state.isFullscreen = !state.isFullscreen;
-        if (state.isFullscreen) {
-            state.preFullscreenLeftTab = state.activeLeftTab;
-            state.activeLeftTab = 'preview';
-        } else {
-            state.activeLeftTab = state.preFullscreenLeftTab;
-        }
-        renderUI();
-    }
-    
-    function toggleConsole() {
-        state.isConsoleOpen = !state.isConsoleOpen;
-        renderUI();
-    }
-
-    function handleTabClick(event, pane) {
-        const tabId = event.target.dataset.tabId;
-        if (!tabId) return;
-
-        if (pane === 'left') state.activeLeftTab = tabId;
-        else state.activeRightTab = tabId;
-
-        renderUI();
-    }
-
-    function renderUI() {
-        // Apply global layout classes
-        document.body.classList.toggle('fullscreen-preview', state.isFullscreen);
-        editorAreaWrapper.classList.toggle('console-closed', !state.isConsoleOpen);
-        mainContainer.classList.toggle('split-view', state.isSplitView);
-        
-        // Update console toggle button icon
-        toggleConsoleBtn.textContent = state.isConsoleOpen ? '▾' : '▴';
-        
-        // Set pane widths
-        if (state.isSplitView) {
-            const containerWidth = mainContainer.offsetWidth;
-            const leftWidth = (containerWidth - 5) * (state.leftPaneWidth / 100);
-            const rightWidth = containerWidth - leftWidth - 5;
-            panes.left.el.style.width = `${leftWidth}px`;
-            panes.right.el.style.width = `${rightWidth}px`;
-        } else {
-            panes.left.el.style.width = '100%';
-            panes.right.el.style.width = '0';
-        }
-        
-        // Set console height
-        consoleContainer.style.height = `${state.consoleHeight}px`;
-
-        // Render panes and tab bars
-        if (!state.isFullscreen) {
-            renderPane('left',  state.activeLeftTab);
-            renderPane('right', state.activeRightTab);
-            renderTabBar(panes.left.tabBar,  state.activeLeftTab);
-            renderTabBar(panes.right.tabBar, state.activeRightTab);
-        } else {
-            // In fullscreen, we only care about the left preview pane
-            panes.left.previewEl.style.display = 'block';
-            panes.left.editorEl.style.display = 'none';
-        }
-        
-        // Update Monaco layout after DOM changes
-        setTimeout(() => {
-            if (panes.left.editor) panes.left.editor.layout();
-            if (panes.right.editor) panes.right.editor.layout();
-        }, 0);
-        
-        if (state.autoUpdate) {
-            updateAllPreviews();
-        }
-        saveState();
-    }
-
-    function renderPane(pane, activeTabId) {
-        const ui = panes[pane];
-        const file = files[activeTabId];
-        if (file.language) {
-            ui.previewEl.style.display = 'none';
-            ui.editorEl.style.display  = 'block';
-            if (ui.editor && ui.editor.getModel() !== file.model) {
-                ui.editor.setModel(file.model);
-            }
-            setTimeout(() => ui.editor?.focus(), 50);
-        } else {
-            ui.editorEl.style.display  = 'none';
-            ui.previewEl.style.display = 'block';
-        }
-    }
-
-    function renderTabBar(container, activeId) {
-        container.innerHTML = '';
-        for (const id in files) {
-            const tab = document.createElement('div');
-            tab.className = 'tab' + (id === activeId ? ' active' : '');
-            tab.dataset.tabId = id;
-            tab.textContent = files[id].name;
-            container.appendChild(tab);
-        }
-    }
-
-    // --- PREVIEW & CONSOLE LOGIC ---
-    function generatePreviewContent() {
-        const html = files.html.model?.getValue() || '';
-        const css  = files.css.model?.getValue() || '';
-        const js   = files.js.model?.getValue() || '';
-
-        const consoleInterceptor = `<script>const _log = (type, args) => window.parent.postMessage({ source: 'iframe-console', type, message: Array.from(args).map(arg => { try { return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg); } catch (e) { return String(arg); } }).join(' ') }, '*'); console.log = (...args) => _log('log', args); console.warn = (...args) => _log('warn', args); console.error = (...args) => _log('error', args); window.addEventListener('error', e => _log('error', [e.message])); <\/script>`;
-        
-        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style>${consoleInterceptor}</head><body>${html}<script>${js}<\/script></body></html>`;
-    }
-    
-    window.addEventListener('message', (event) => {
-        if (event.data && event.data.source === 'iframe-console') {
-            const { type, message } = event.data;
-            const entry = document.createElement('div');
-            entry.className = `log-entry log-${type}`;
-            entry.textContent = `[${type.toUpperCase()}] ${message}`;
-            consoleOutput.appendChild(entry);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-    });
-
-    function updateAllPreviews() {
-        const content = generatePreviewContent();
-        previewIframes.forEach(iframe => { iframe.srcdoc = content; });
-        previewWindows = previewWindows.filter(win => !win.closed);
-        previewWindows.forEach(win => { try { win.document.open(); win.document.write(content); win.document.close(); } catch(e) { console.error("Could not update preview window:", e); } });
-    }
-
-    function openPreviewInNewTab() {
-        try {
-            const win = window.open('', '_blank');
-            if (!win) { throw new Error("Popup blocked"); }
-            previewWindows.push(win);
-            win.document.write(generatePreviewContent());
-            win.document.close();
-        } catch(e) {
-            console.error("Could not open new tab:", e);
-            alert("Could not open new tab. Please check your popup blocker settings.");
-        }
-    }
-
-    // --- NEW FEATURES ---
-    function saveProject() {
-        const content = generatePreviewContent();
-        const blob = new Blob([content], { type: 'text/html' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'project.html';
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-
-    function importFiles(event) {
-        for (const file of event.target.files) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                if (file.name.endsWith('.html')) files.html.model.setValue(content);
-                else if (file.name.endsWith('.css')) files.css.model.setValue(content);
-                else if (file.name.endsWith('.js')) files.js.model.setValue(content);
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE & CONSTANTS ---
+            const APP_STORAGE_KEY = 'webCodeEditorState';
+            const state = {
+                isSplitView: false,
+                isConsoleOpen: true,
+                isFullscreen: false,
+                autoUpdate: true,
+                activeLeftTab: 'html',
+                activeRightTab: 'preview',
+                preFullscreenLeftTab: 'html', // To restore tab after exiting fullscreen
+                leftPaneWidth: 50,  // Store as percentage
+                consoleHeight: 200,  // Store as pixels
+                inspectorEnabled: false,
             };
-            reader.readAsText(file);
-        }
-    }
 
-    function formatActiveEditor() {
-        // Format left pane if it's an editor
-        if (files[state.activeLeftTab].language) {
-            panes.left.editor.getAction('editor.action.formatDocument').run();
-        }
-        // Format right pane if split view is active and it's an editor
-        if (state.isSplitView && files[state.activeRightTab].language) {
-            panes.right.editor.getAction('editor.action.formatDocument').run();
-        }
-    }
+            const files = {
+                html: { name: 'HTML', language: 'html', model: null, defaultValue: `<h1>Hello, World!</h1>\n<p>Edit this content to see live updates.</p>\n<button onclick="testLog()">Log to Console</button>` },
+                css: { name: 'CSS', language: 'css', model: null, defaultValue: `body {\n  font-family: sans-serif;\n  color: #333;\n  background-color: #f4f4f4;\n  padding: 20px;\n}` },
+                js: { name: 'JavaScript', language: 'javascript', model: null, defaultValue: `// Your JavaScript code here\nconsole.log('Hello from the editor!');\n\nfunction testLog() {\n  console.log("Button was clicked!");\n  console.warn("This is a warning.");\n  console.error("This is an error.");\n}` },
+                preview: { name: 'Preview', language: null, model: null },
+            };
 
-    function resetProject() {
-        if (confirm("Are you sure you want to reset the project? All your current code will be lost.")) {
-            // Reset file content
-            for (const id in files) {
-                if (files[id].model) {
-                    files[id].model.setValue(files[id].defaultValue);
+            let previewWindows = []; // Track opened preview windows
+
+            // --- DOM ELEMENTS ---
+            const mainContainer = document.getElementById('main-container');
+            const editorAreaWrapper = document.getElementById('editor-area-wrapper');
+            const splitViewBtn = document.getElementById('split-view-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const previewNewTabBtn = document.getElementById('preview-new-tab-btn');
+            const saveProjectBtn = document.getElementById('save-project-btn');
+            const importFilesBtn = document.getElementById('import-files-btn');
+            const resetProjectBtn = document.getElementById('reset-project-btn');
+            const formatCodeBtn = document.getElementById('format-code-btn');
+            const runBtn = document.getElementById('run-btn');
+            const autoUpdateCheckbox = document.getElementById('auto-update-checkbox');
+            const resizerV = document.getElementById('resizer-v');
+            const resizerH = document.getElementById('resizer-h');
+            const consoleContainer = document.getElementById('console-container');
+            const consoleOutput = document.getElementById('console-output');
+            const clearConsoleBtn = document.getElementById('clear-console-btn');
+            const toggleConsoleBtn = document.getElementById('toggle-console-btn');
+            const previewIframes = document.querySelectorAll('.preview-iframe');
+            const inspectBtn = document.getElementById('inspect-btn');
+            const panes = {
+                left: { el: document.getElementById('pane-left'), tabBar: document.getElementById('tab-bar-left'), editorEl: document.getElementById('editor-left'), previewEl: document.getElementById('preview-left'), editor: null },
+                right: { el: document.getElementById('pane-right'), tabBar: document.getElementById('tab-bar-right'), editorEl: document.getElementById('editor-right'), previewEl: document.getElementById('preview-right'), editor: null }
+            };
+
+            // Inspector overlay elements (placed in parent window)
+            const inspectorOverlay = document.createElement('div');
+            inspectorOverlay.className = 'inspector-overlay';
+            inspectorOverlay.style.display = 'none';
+            const inspectorBox = document.createElement('div');
+            inspectorBox.className = 'box';
+            inspectorOverlay.appendChild(inspectorBox);
+            const inspectorTooltip = document.createElement('div');
+            inspectorTooltip.className = 'inspector-tooltip';
+            inspectorTooltip.style.display = 'none';
+            document.body.appendChild(inspectorOverlay);
+            document.body.appendChild(inspectorTooltip);
+
+            // --- UTILITY FUNCTIONS ---
+            function debounce(func, delay) {
+                let timeout;
+                return function (...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), delay);
+                };
+            }
+
+            // --- STATE MANAGEMENT (localStorage) ---
+            function saveState() {
+                const stateToSave = {
+                    ...state,
+                    html: files.html.model?.getValue() || files.html.defaultValue,
+                    css: files.css.model?.getValue() || files.css.defaultValue,
+                    js: files.js.model?.getValue() || files.js.defaultValue,
+                };
+                // Don't save transient state
+                delete stateToSave.preFullscreenLeftTab;
+                delete stateToSave.isFullscreen;
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(stateToSave));
+            }
+
+            function loadState() {
+                const savedState = JSON.parse(localStorage.getItem(APP_STORAGE_KEY));
+                if (!savedState) return;
+
+                // Load content
+                files.html.defaultValue = savedState.html || files.html.defaultValue;
+                files.css.defaultValue = savedState.css || files.css.defaultValue;
+                files.js.defaultValue = savedState.js || files.js.defaultValue;
+
+                // Load UI state
+                Object.assign(state, savedState);
+                autoUpdateCheckbox.checked = state.autoUpdate;
+            }
+
+            // --- MONACO EDITOR INITIALIZATION ---
+            loadState();
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+            require(['vs/editor/editor.main'], () => {
+                const debouncedSaveAndUpdate = debounce(() => {
+                    if (state.autoUpdate) updateAllPreviews();
+                    saveState();
+                }, 300);
+
+                for (const id in files) {
+                    if (files[id].language) {
+                        files[id].model = monaco.editor.createModel(files[id].defaultValue, files[id].language);
+                        files[id].model.onDidChangeContent(debouncedSaveAndUpdate);
+                    }
+                }
+                const commonConfig = { theme: 'vs-dark', automaticLayout: true };
+                panes.left.editor = monaco.editor.create(panes.left.editorEl, commonConfig);
+                panes.right.editor = monaco.editor.create(panes.right.editorEl, commonConfig);
+
+                renderUI();
+            });
+
+            // --- EVENT LISTENERS ---
+            splitViewBtn.addEventListener('click', toggleSplitView);
+            fullscreenBtn.addEventListener('click', toggleFullScreen);
+            previewNewTabBtn.addEventListener('click', openPreviewInNewTab);
+            saveProjectBtn.addEventListener('click', saveProject);
+            importFilesBtn.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = '.html,.css,.js';
+                input.onchange = importFiles;
+                input.click();
+            });
+            resetProjectBtn.addEventListener('click', resetProject);
+            formatCodeBtn.addEventListener('click', formatActiveEditor);
+            runBtn.addEventListener('click', updateAllPreviews);
+            autoUpdateCheckbox.addEventListener('change', (e) => {
+                state.autoUpdate = e.target.checked;
+                saveState();
+            });
+            if (inspectBtn) {
+                inspectBtn.addEventListener('click', () => {
+                    state.inspectorEnabled = !state.inspectorEnabled;
+                    inspectBtn.classList.toggle('active', state.inspectorEnabled);
+                    // Rebuild previews so the iframe inspector code picks up the new flag
+                    updateAllPreviews();
+                });
+            }
+            clearConsoleBtn.addEventListener('click', () => consoleOutput.innerHTML = '');
+            toggleConsoleBtn.addEventListener('click', toggleConsole);
+
+            panes.left.tabBar.addEventListener('click', e => handleTabClick(e, 'left'));
+            panes.right.tabBar.addEventListener('click', e => handleTabClick(e, 'right'));
+
+            resizerV.addEventListener('mousedown', startResizeV);
+            resizerH.addEventListener('mousedown', startResizeH);
+
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    updateAllPreviews();
+                }
+                if (e.key === 'Escape' && state.isFullscreen) {
+                    toggleFullScreen();
+                }
+            });
+
+            // Clean up preview windows on unload
+            window.addEventListener('beforeunload', () => {
+                previewWindows.forEach(win => { if (win && !win.closed) win.close(); });
+            });
+
+            // --- RESIZER LOGIC ---
+            function startResizeV(e) { e.preventDefault(); document.body.classList.add('is-resizing-v'); const startX = e.clientX; const containerRect = mainContainer.getBoundingClientRect(); const startLeftWidth = panes.left.el.getBoundingClientRect().width; function onMove(ev) { const currentX = ev.clientX; const deltaX = currentX - startX; let newLeftWidth = startLeftWidth + deltaX; const minWidth = 150; const maxLeftWidth = containerRect.width - minWidth - 5; newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth)); const newRightWidth = containerRect.width - newLeftWidth - 5; panes.left.el.style.width = `${newLeftWidth}px`; panes.right.el.style.width = `${newRightWidth}px`; if (panes.left.editor) panes.left.editor.layout(); if (panes.right.editor) panes.right.editor.layout(); } function onUp() { document.body.classList.remove('is-resizing-v'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); const finalLeftWidth = panes.left.el.getBoundingClientRect().width; const containerWidth = mainContainer.getBoundingClientRect().width; state.leftPaneWidth = (finalLeftWidth / containerWidth) * 100; saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
+            function startResizeH(e) { e.preventDefault(); document.body.classList.add('is-resizing-h'); const startY = e.clientY; const startHeight = consoleContainer.getBoundingClientRect().height; const totalHeight = editorAreaWrapper.getBoundingClientRect().height; function onMove(ev) { const delta = startY - ev.clientY; let newHeight = startHeight + delta; newHeight = Math.max(45, Math.min(newHeight, totalHeight - 100)); consoleContainer.style.height = newHeight + 'px'; } function onUp() { document.body.classList.remove('is-resizing-h'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); state.consoleHeight = parseInt(consoleContainer.style.height); saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
+
+            // --- CORE UI LOGIC ---
+            function toggleSplitView() {
+                state.isSplitView = !state.isSplitView;
+                renderUI();
+            }
+
+            function toggleFullScreen() {
+                state.isFullscreen = !state.isFullscreen;
+                if (state.isFullscreen) {
+                    state.preFullscreenLeftTab = state.activeLeftTab;
+                    state.activeLeftTab = 'preview';
+                } else {
+                    state.activeLeftTab = state.preFullscreenLeftTab;
+                }
+                renderUI();
+            }
+
+            function toggleConsole() {
+                state.isConsoleOpen = !state.isConsoleOpen;
+                renderUI();
+            }
+
+            function handleTabClick(event, pane) {
+                const tabId = event.target.dataset.tabId;
+                if (!tabId) return;
+
+                if (pane === 'left') state.activeLeftTab = tabId;
+                else state.activeRightTab = tabId;
+
+                renderUI();
+            }
+
+            function renderUI() {
+                // Apply global layout classes
+                document.body.classList.toggle('fullscreen-preview', state.isFullscreen);
+                editorAreaWrapper.classList.toggle('console-closed', !state.isConsoleOpen);
+                mainContainer.classList.toggle('split-view', state.isSplitView);
+
+                // Update console toggle button icon
+                toggleConsoleBtn.textContent = state.isConsoleOpen ? '▾' : '▴';
+
+                // Set pane widths
+                if (state.isSplitView) {
+                    const containerWidth = mainContainer.offsetWidth;
+                    const leftWidth = (containerWidth - 5) * (state.leftPaneWidth / 100);
+                    const rightWidth = containerWidth - leftWidth - 5;
+                    panes.left.el.style.width = `${leftWidth}px`;
+                    panes.right.el.style.width = `${rightWidth}px`;
+                } else {
+                    panes.left.el.style.width = '100%';
+                    panes.right.el.style.width = '0';
+                }
+
+                // Set console height
+                consoleContainer.style.height = `${state.consoleHeight}px`;
+
+                // Render panes and tab bars
+                if (!state.isFullscreen) {
+                    renderPane('left', state.activeLeftTab);
+                    renderPane('right', state.activeRightTab);
+                    renderTabBar(panes.left.tabBar, state.activeLeftTab);
+                    renderTabBar(panes.right.tabBar, state.activeRightTab);
+                } else {
+                    // In fullscreen, we only care about the left preview pane
+                    panes.left.previewEl.style.display = 'block';
+                    panes.left.editorEl.style.display = 'none';
+                }
+
+                // Update Monaco layout after DOM changes
+                setTimeout(() => {
+                    if (panes.left.editor) panes.left.editor.layout();
+                    if (panes.right.editor) panes.right.editor.layout();
+                }, 0);
+
+                if (state.autoUpdate) {
+                    updateAllPreviews();
+                }
+                saveState();
+            }
+
+            function renderPane(pane, activeTabId) {
+                const ui = panes[pane];
+                const file = files[activeTabId];
+                if (file.language) {
+                    ui.previewEl.style.display = 'none';
+                    ui.editorEl.style.display = 'block';
+                    if (ui.editor && ui.editor.getModel() !== file.model) {
+                        ui.editor.setModel(file.model);
+                    }
+                    setTimeout(() => ui.editor?.focus(), 50);
+                } else {
+                    ui.editorEl.style.display = 'none';
+                    ui.previewEl.style.display = 'block';
                 }
             }
-            // Reset UI state to defaults
-            state.isSplitView = false;
-            state.isConsoleOpen = true;
-            state.activeLeftTab = 'html';
-            state.activeRightTab = 'preview';
-            
-            // Re-render everything
-            renderUI();
-            updateAllPreviews(); // update preview with default content
-        }
-    }
-});
+
+            function renderTabBar(container, activeId) {
+                container.innerHTML = '';
+                for (const id in files) {
+                    const tab = document.createElement('div');
+                    tab.className = 'tab' + (id === activeId ? ' active' : '');
+                    tab.dataset.tabId = id;
+                    tab.textContent = files[id].name;
+                    container.appendChild(tab);
+                }
+            }
+
+            // --- PREVIEW & CONSOLE LOGIC ---
+            function generatePreviewContent() {
+                const html = files.html.model?.getValue() || '';
+                const css  = files.css.model?.getValue() || '';
+                const js   = files.js.model?.getValue() || '';
+
+                const consoleInterceptor = `<script>const _log = (type, args) => window.parent.postMessage({ source: 'iframe-console', type, message: Array.from(args).map(arg => { try { return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg); } catch (e) { return String(arg); } }).join(' ') }, '*'); console.log = (...args) => _log('log', args); console.warn = (...args) => _log('warn', args); console.error = (...args) => _log('error', args); window.addEventListener('error', e => _log('error', [e.message])); <\/script>`;
+
+                // Inspector script injected into the preview; it posts hovered element box-model info to parent when enabled
+                const inspectorScript = `<script>(function(){window.__inspectorEnabled = ${state.inspectorEnabled ? 'true' : 'false'}; function sendInfo(el){ if(!el){ window.parent.postMessage({source:'iframe-inspector', info:null}, '*'); return; } const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); const info = { rect:{left: r.left, top: r.top, width: r.width, height: r.height}, margin:{top:parseFloat(cs.marginTop)||0,right:parseFloat(cs.marginRight)||0,bottom:parseFloat(cs.marginBottom)||0,left:parseFloat(cs.marginLeft)||0}, padding:{top:parseFloat(cs.paddingTop)||0,right:parseFloat(cs.paddingRight)||0,bottom:parseFloat(cs.paddingBottom)||0,left:parseFloat(cs.paddingLeft)||0}, border:{top:parseFloat(cs.borderTopWidth)||0,right:parseFloat(cs.borderRightWidth)||0,bottom:parseFloat(cs.borderBottomWidth)||0,left:parseFloat(cs.borderLeftWidth)||0}, tag:el.tagName, id:el.id||'', classes:el.className||'' }; window.parent.postMessage({source:'iframe-inspector', info}, '*'); }
+                var last=null; document.addEventListener('mousemove', function(e){ try{ if(!window.__inspectorEnabled) return; var el = document.elementFromPoint(e.clientX,e.clientY); if(el!==last){ last=el; if(el===document.documentElement||el===document.body){ window.parent.postMessage({source:'iframe-inspector', info:null}, '*'); } else sendInfo(el); } }catch(err){} }, {passive:true});
+                window.addEventListener('message', function(ev){ if(ev.data && ev.data.source === 'parent' && ev.data.type === 'inspector-toggle'){ window.__inspectorEnabled = !!ev.data.enabled; } }); })();<\/script>`;
+
+                return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style>${consoleInterceptor}</head><body>${html}<script>${js}<\/script>${inspectorScript}</body></html>`;
+            }
+
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.source === 'iframe-console') {
+                    const { type, message } = event.data;
+                    const entry = document.createElement('div');
+                    entry.className = `log-entry log-${type}`;
+                    entry.textContent = `[${type.toUpperCase()}] ${message}`;
+                    consoleOutput.appendChild(entry);
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                } else if (event.data && event.data.source === 'iframe-inspector') {
+                    // Show box-model info from iframe inspector
+                    const info = event.data.info;
+                    // Find which iframe sent this message
+                    const iframe = Array.from(previewIframes).find(f => f.contentWindow === event.source);
+                    if (!iframe) return;
+                    if (!info) {
+                        inspectorOverlay.style.display = 'none';
+                        inspectorTooltip.style.display = 'none';
+                        return;
+                    }
+                    const iframeRect = iframe.getBoundingClientRect();
+                    // Position overlay to cover iframe; inspectorBox positioned inside overlay
+                    inspectorOverlay.style.display = 'block';
+                    inspectorOverlay.style.left = iframeRect.left + 'px';
+                    inspectorOverlay.style.top = iframeRect.top + 'px';
+                    inspectorOverlay.style.width = iframeRect.width + 'px';
+                    inspectorOverlay.style.height = iframeRect.height + 'px';
+
+                    inspectorBox.style.left = info.rect.left + 'px';
+                    inspectorBox.style.top = info.rect.top + 'px';
+                    inspectorBox.style.width = info.rect.width + 'px';
+                    inspectorBox.style.height = info.rect.height + 'px';
+
+                    inspectorTooltip.style.whiteSpace = 'pre';
+                    inspectorTooltip.style.display = 'block';
+                    const tooltipLeft = iframeRect.left + info.rect.left + info.rect.width + 12;
+                    const tooltipTop = iframeRect.top + info.rect.top;
+                    inspectorTooltip.style.left = tooltipLeft + 'px';
+                    inspectorTooltip.style.top = tooltipTop + 'px';
+                    inspectorTooltip.textContent = `${info.tag.toLowerCase()}${info.id? ' #' + info.id : ''}${info.classes ? ' .' + info.classes.split(' ').join('.') : ''}\nmargin: ${info.margin.top}px ${info.margin.right}px ${info.margin.bottom}px ${info.margin.left}px\nborder: ${info.border.top}px ${info.border.right}px ${info.border.bottom}px ${info.border.left}px\npadding: ${info.padding.top}px ${info.padding.right}px ${info.padding.bottom}px ${info.padding.left}px`;
+                }
+            });
+
+            function updateAllPreviews() {
+                const content = generatePreviewContent();
+                previewIframes.forEach(iframe => { iframe.srcdoc = content; });
+                previewWindows = previewWindows.filter(win => !win.closed);
+                previewWindows.forEach(win => { try { win.document.open(); win.document.write(content); win.document.close(); } catch (e) { console.error("Could not update preview window:", e); } });
+            }
+
+            function openPreviewInNewTab() {
+                try {
+                    const win = window.open('', '_blank');
+                    if (!win) { throw new Error("Popup blocked"); }
+                    previewWindows.push(win);
+                    win.document.write(generatePreviewContent());
+                    win.document.close();
+                } catch (e) {
+                    console.error("Could not open new tab:", e);
+                    alert("Could not open new tab. Please check your popup blocker settings.");
+                }
+            }
+
+            // --- NEW FEATURES ---
+            function saveProject() {
+                const content = generatePreviewContent();
+                const blob = new Blob([content], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'project.html';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+
+            function importFiles(event) {
+                for (const file of event.target.files) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        if (file.name.endsWith('.html')) files.html.model.setValue(content);
+                        else if (file.name.endsWith('.css')) files.css.model.setValue(content);
+                        else if (file.name.endsWith('.js')) files.js.model.setValue(content);
+                    };
+                    reader.readAsText(file);
+                }
+            }
+
+            function formatActiveEditor() {
+                // Format left pane if it's an editor
+                if (files[state.activeLeftTab].language) {
+                    panes.left.editor.getAction('editor.action.formatDocument').run();
+                }
+                // Format right pane if split view is active and it's an editor
+                if (state.isSplitView && files[state.activeRightTab].language) {
+                    panes.right.editor.getAction('editor.action.formatDocument').run();
+                }
+            }
+
+            function resetProject() {
+                if (confirm("Are you sure you want to reset the project? All your current code will be lost.")) {
+                    // Reset file content
+                    for (const id in files) {
+                        if (files[id].model) {
+                            files[id].model.setValue(files[id].defaultValue);
+                        }
+                    }
+                    // Reset UI state to defaults
+                    state.isSplitView = false;
+                    state.isConsoleOpen = true;
+                    state.activeLeftTab = 'html';
+                    state.activeRightTab = 'preview';
+
+                    // Re-render everything
+                    renderUI();
+                    updateAllPreviews(); // update preview with default content
+                }
+            }
+        });
     </script>
 </body>
+
 </html>
