@@ -3,509 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VS Code-Style Web Editor</title>
+    <title>Enhanced Web Code Editor</title>
     <style>
 :root {
     --bg-color: #1e1e1e;
-    --sidebar-bg: #252526;
-    --editor-bg: #1e1e1e;
-    --toolbar-bg: #333333;
+    --editor-bg: #252526;
+    --toolbar-bg: #3c3c3c;
     --tab-bar-bg: #2d2d2d;
     --tab-inactive-bg: #2d2d2d;
     --tab-active-bg: #1e1e1e;
-    --border-color: #3e3e3e;
-    --resizer-color: #3e3e3e;
+    --border-color: #444444;
+    --resizer-color: #5a5a5a;
     --text-color: #cccccc;
-    --text-muted: #858585;
-    --button-bg: #0e639c;
-    --button-hover-bg: #1177bb;
-    --console-bg: #1e1e1e;
-    --hover-bg: #2a2d2e;
-    --activity-bar-bg: #333333;
-    --input-bg: #3c3c3c;
+    --button-bg: #5a5a5a;
+    --button-hover-bg: #6a6a6a;
+    --console-bg: #252526;
+    --console-header: #3c3c3c;
 }
-
-* { box-sizing: border-box; }
 
 body, html {
     margin: 0; padding: 0; height: 100%; width: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--text-color);
-    background-color: var(--bg-color);
-    overflow: hidden;
-    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: var(--text-color); background-color: var(--bg-color); overflow: hidden;
 }
 
-body.is-resizing * {
-    user-select: none !important;
+body.is-resizing-v, body.is-resizing-h {
+    user-select: none;
+}
+body.is-resizing-v { cursor: col-resize; }
+body.is-resizing-h { cursor: row-resize; }
+
+/* Disable pointer events on iframes and editors during resize */
+body.is-resizing-v iframe,
+body.is-resizing-h iframe,
+body.is-resizing-v .editor-instance,
+body.is-resizing-h .editor-instance,
+body.is-resizing-v .preview-instance,
+body.is-resizing-h .preview-instance {
     pointer-events: none !important;
 }
 
-body.is-resizing .split-resizer {
-    pointer-events: all !important;
-}
+.toolbar { display: flex; justify-content: space-between; align-items: center; background-color: var(--toolbar-bg); padding: 5px 20px; height: 50px; box-sizing: border-box; }
+.toolbar h1 { font-size: 1.2em; margin: 0; }
+.toolbar .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.toolbar button { background-color: var(--button-bg); color: var(--text-color); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+.toolbar button:hover { background-color: var(--button-hover-bg); }
+.toolbar .button-group { display: flex; gap: 10px; border-left: 1px solid #555; padding-left: 10px;}
 
-/* TOOLBAR */
-.toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--toolbar-bg);
-    padding: 0 15px;
-    height: 35px;
-    border-bottom: 1px solid var(--border-color);
-}
 
-.toolbar h1 {
-    font-size: 13px;
-    margin: 0;
-    font-weight: 400;
-}
+/* Auto-update Toggle Switch */
+.toggle-switch { display: inline-flex; align-items: center; cursor: pointer; gap: 8px; font-size: 14px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider { position: relative; width: 34px; height: 20px; background-color: #444; border-radius: 20px; transition: background-color 0.2s; }
+.toggle-switch .slider::before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; border-radius: 50%; transition: transform 0.2s; }
+.toggle-switch input:checked + .slider { background-color: #4caf50; }
+.toggle-switch input:checked + .slider::before { transform: translateX(14px); }
 
-.toolbar .buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.toolbar button {
-    background-color: var(--button-bg);
-    color: white;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.toolbar button:hover {
-    background-color: var(--button-hover-bg);
-}
-
-.toolbar button.secondary {
-    background-color: #3c3c3c;
-}
-
-.toolbar button.secondary:hover {
-    background-color: #4c4c4c;
-}
-
-/* MAIN LAYOUT */
-.main-layout {
-    display: flex;
-    height: calc(100vh - 35px);
-}
-
-/* ACTIVITY BAR */
-.activity-bar {
-    width: 48px;
-    background-color: var(--activity-bar-bg);
-    border-right: 1px solid var(--border-color);
+#editor-area-wrapper {
     display: flex;
     flex-direction: column;
-    padding-top: 5px;
+    height: calc(100vh - 50px);
 }
 
-.activity-bar-item {
-    width: 48px;
-    height: 48px;
+#main-container {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-muted);
-    border-left: 2px solid transparent;
-}
-
-.activity-bar-item:hover {
-    color: var(--text-color);
-}
-
-.activity-bar-item.active {
-    color: var(--text-color);
-    border-left-color: var(--button-bg);
-}
-
-/* SIDEBAR */
-.sidebar {
-    width: 250px;
-    background-color: var(--sidebar-bg);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar.collapsed {
-    display: none;
-}
-
-.sidebar-header {
-    padding: 8px 12px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.sidebar-actions {
-    display: flex;
-    gap: 4px;
-}
-
-.sidebar-action-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px;
-    font-size: 16px;
-}
-
-.sidebar-action-btn:hover {
-    color: var(--text-color);
-}
-
-.file-tree {
-    flex: 1;
-    overflow-y: auto;
-    padding: 4px 0;
-}
-
-.file-tree-item {
-    display: flex;
-    align-items: center;
-    padding: 4px 8px 4px 12px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.file-tree-item:hover {
-    background-color: var(--hover-bg);
-}
-
-.file-tree-item.active {
-    background-color: var(--tab-active-bg);
-}
-
-.file-tree-item .icon {
-    margin-right: 6px;
-    font-size: 14px;
-}
-
-/* EDITOR AREA */
-.editor-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.editor-groups {
-    flex: 1;
-    display: flex;
+    flex-grow: 1;
+    min-height: 100px;
     overflow: hidden;
 }
 
-.editor-group {
-    flex: 1;
+.pane {
     display: flex;
     flex-direction: column;
-    min-width: 200px;
-    background-color: var(--editor-bg);
-}
-
-.editor-group-header {
-    display: flex;
-    background-color: var(--tab-bar-bg);
-    border-bottom: 1px solid var(--border-color);
-    height: 35px;
-    align-items: flex-end;
-}
-
-.editor-tabs {
-    display: flex;
-    flex: 1;
-    overflow-x: auto;
-}
-
-.editor-tabs::-webkit-scrollbar {
-    height: 0;
-}
-
-.editor-tab {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    height: 35px;
-    background-color: var(--tab-inactive-bg);
-    border-right: 1px solid var(--border-color);
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: 13px;
-    gap: 8px;
-}
-
-.editor-tab:hover {
-    background-color: #323233;
-}
-
-.editor-tab.active {
-    background-color: var(--editor-bg);
-}
-
-.editor-tab-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    opacity: 0;
-    font-size: 18px;
-}
-
-.editor-tab:hover .editor-tab-close {
-    opacity: 0.6;
-}
-
-.editor-tab-close:hover {
-    opacity: 1 !important;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.editor-group-actions {
-    display: flex;
-    padding: 0 8px;
-    gap: 2px;
-}
-
-.editor-group-action {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px;
-    font-size: 16px;
-    width: 22px;
-    height: 22px;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.editor-group-action:hover {
-    color: var(--text-color);
-    background-color: var(--hover-bg);
-}
-
-.editor-content {
-    flex: 1;
+    height: 100%;
+    min-width: 150px;
     position: relative;
-    overflow: hidden;
 }
 
-.editor-instance {
+.tab-bar { display: flex; background-color: var(--tab-bar-bg); height: 40px; flex-shrink: 0; }
+.tab { padding: 0 20px; line-height: 40px; background-color: var(--tab-inactive-bg); cursor: pointer; border-right: 1px solid var(--border-color); }
+.tab.active { background-color: var(--tab-active-bg); }
+.tab:hover { background-color: #3f3f3f; }
+
+.content-area { flex-grow: 1; position: relative; overflow: hidden; }
+.editor-instance, .preview-instance {
+    height: 100%;
+    width: 100%;
+    display: none;
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    display: none;
 }
+.preview-iframe { width: 100%; height: 100%; border: none; background-color: #fff; }
 
-.editor-instance.active {
-    display: block;
-}
-
-.preview-container {
-    width: 100%;
-    height: 100%;
-    background-color: white;
-}
-
-.preview-container iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-.empty-editor {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-muted);
-}
-
-.split-resizer {
-    width: 4px;
+#resizer-v {
+    width: 5px;
     background-color: var(--resizer-color);
     cursor: col-resize;
     flex-shrink: 0;
-    z-index: 100;
+    display: none;
+    position: relative;
+    z-index: 10;
 }
 
-.split-resizer:hover {
-    background-color: var(--button-bg);
+#resizer-h {
+    height: 5px;
+    background-color: var(--resizer-color);
+    cursor: row-resize;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
 }
 
-/* CONSOLE */
-.console-panel {
-    height: 200px;
-    border-top: 1px solid var(--border-color);
+#console-container {
     display: flex;
     flex-direction: column;
+    height: 200px;
+    min-height: 45px;
+    flex-shrink: 0;
     background-color: var(--console-bg);
 }
 
-.console-panel.collapsed {
+.console-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 10px; height: 35px; background-color: var(--console-header);
+    font-weight: bold; flex-shrink: 0; border-bottom: 1px solid var(--border-color);
+}
+.console-toolbar .console-buttons { display: flex; gap: 5px; }
+#clear-console-btn, #toggle-console-btn {
+    padding: 4px 8px; font-size: 12px;
+}
+#toggle-console-btn { min-width: 25px; }
+
+#console-output {
+    flex-grow: 1; overflow-y: auto; padding: 5px 10px; font-family: 'Courier New', Courier, monospace; font-size: 14px;
+}
+
+#console-output .log-entry { padding: 2px 0; border-bottom: 1px solid #333; word-wrap: break-word; }
+#console-output .log-warn { color: #f1c40f; }
+#console-output .log-error { color: #e74c3c; }
+
+/* --- LAYOUTS --- */
+#pane-left { width: 100%; }
+#pane-right { display: none; width: 0; }
+
+#main-container.split-view #pane-left { width: 50%; }
+#main-container.split-view #pane-right { display: flex; width: calc(50% - 5px); }
+#main-container.split-view #resizer-v { display: block; }
+
+/* Console Closed State */
+#editor-area-wrapper.console-closed #console-container,
+#editor-area-wrapper.console-closed #resizer-h {
     display: none;
 }
-
-.console-header {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 12px;
-    height: 35px;
-    background-color: var(--sidebar-bg);
-    border-bottom: 1px solid var(--border-color);
-    align-items: center;
+#editor-area-wrapper.console-closed #main-container {
+    height: 100%; /* Take full height when console is closed */
 }
 
-.console-actions {
-    display: flex;
-    gap: 8px;
+/* Fullscreen Preview State */
+body.fullscreen-preview .toolbar {
+    /* Optionally hide parts of the toolbar */
 }
-
-.console-actions button {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px 8px;
-    font-size: 12px;
-}
-
-.console-actions button:hover {
-    color: var(--text-color);
-}
-
-.console-output {
-    flex: 1;
-    overflow-y: auto;
-    padding: 4px 8px;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 12px;
-}
-
-.console-entry {
-    padding: 2px 0;
-    display: flex;
-    gap: 8px;
-}
-
-.console-entry.log { color: var(--text-color); }
-.console-entry.warn { color: #d4ac0d; }
-.console-entry.error { color: #cd3131; }
-
-/* MODAL */
-.modal-overlay {
+body.fullscreen-preview #main-container,
+body.fullscreen-preview #console-container,
+body.fullscreen-preview #resizer-h,
+body.fullscreen-preview #resizer-v,
+body.fullscreen-preview #pane-right,
+body.fullscreen-preview #pane-left .tab-bar {
     display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
 }
-
-.modal-overlay.active {
-    display: flex;
+body.fullscreen-preview #editor-area-wrapper {
+    height: calc(100vh - 50px);
 }
-
-.modal {
-    background-color: var(--sidebar-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 20px;
-    min-width: 400px;
+body.fullscreen-preview #pane-left {
+    width: 100% !important; /* Override inline styles from resizer */
+    height: 100%;
 }
-
-.modal h3 {
-    margin: 0 0 15px 0;
-    font-size: 16px;
-}
-
-.modal-input {
-    width: 100%;
-    padding: 8px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-    font-size: 13px;
-    margin-bottom: 15px;
-}
-
-.modal-input:focus {
-    outline: none;
-    border-color: var(--button-bg);
-}
-
-.modal-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-.modal-btn {
-    padding: 6px 14px;
-    border: none;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.modal-btn.primary {
-    background-color: var(--button-bg);
-    color: white;
-}
-
-.modal-btn.primary:hover {
-    background-color: var(--button-hover-bg);
-}
-
-.modal-btn.secondary {
-    background-color: var(--input-bg);
-    color: var(--text-color);
-}
-
-.modal-btn.secondary:hover {
-    background-color: #4c4c4c;
-}
-
-/* SCROLLBAR */
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg-color);
-}
-
-::-webkit-scrollbar-thumb {
-    background: #424242;
-    border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #4e4e4e;
+body.fullscreen-preview #pane-left #preview-left {
+    display: block !important;
 }
     </style>
 </head>
@@ -513,638 +188,426 @@ body.is-resizing .split-resizer {
     <div class="toolbar">
         <h1>Web Code Editor</h1>
         <div class="buttons">
-            <button id="run-btn">▶ Run</button>
-            <button class="secondary" id="save-project-btn">💾 Save</button>
-            <button class="secondary" id="preview-new-tab-btn">🗗 Preview</button>
+            <button id="run-btn" title="Manually update the preview (Ctrl/Cmd + S)">Run</button>
+            <label class="toggle-switch">
+                <input type="checkbox" id="auto-update-checkbox" checked>
+                <span class="slider"></span>
+                Auto-update
+            </label>
+            <div class="button-group">
+                <button id="format-code-btn" title="Format the code in the active editor">Format Code</button>
+                <button id="split-view-btn">Toggle Split Screen</button>
+                <button id="fullscreen-btn">Fullscreen Preview</button>
+            </div>
+            <div class="button-group">
+                <button id="preview-new-tab-btn">Open in New Tab</button>
+                <button id="save-project-btn">Save as HTML</button>
+                <button id="import-files-btn">Import Files</button>
+                <button id="reset-project-btn" title="Reset all code to the default template">Reset Project</button>
+            </div>
         </div>
     </div>
 
-    <div class="main-layout">
-        <div class="activity-bar">
-            <div class="activity-bar-item active" title="Explorer">📁</div>
-        </div>
-
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <span>Explorer</span>
-                <div class="sidebar-actions">
-                    <button class="sidebar-action-btn" id="new-file-btn" title="New File">+</button>
-                </div>
-            </div>
-            <div class="file-tree" id="file-tree"></div>
-        </div>
-
-        <div class="editor-area">
-            <div class="editor-groups" id="editor-groups"></div>
-
-            <div class="console-panel" id="console-panel">
-                <div class="console-header">
-                    <span>Console</span>
-                    <div class="console-actions">
-                        <button id="clear-console-btn">Clear</button>
-                        <button id="toggle-console-btn">×</button>
+    <div id="editor-area-wrapper">
+        <div id="main-container">
+            <div id="pane-left" class="pane">
+                <div class="tab-bar" id="tab-bar-left"></div>
+                <div class="content-area">
+                    <div class="editor-instance" id="editor-left"></div>
+                    <div class="preview-instance" id="preview-left">
+                        <iframe class="preview-iframe" id="preview-iframe-left" sandbox="allow-scripts allow-same-origin"></iframe>
                     </div>
                 </div>
-                <div class="console-output" id="console-output"></div>
+            </div>
+
+            <div id="resizer-v"></div>
+
+            <div id="pane-right" class="pane">
+                <div class="tab-bar" id="tab-bar-right"></div>
+                <div class="content-area">
+                    <div class="editor-instance" id="editor-right"></div>
+                    <div class="preview-instance" id="preview-right">
+                         <iframe class="preview-iframe" id="preview-iframe-right" sandbox="allow-scripts allow-same-origin"></iframe>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal">
-            <h3 id="modal-title">New File</h3>
-            <input type="text" class="modal-input" id="modal-input" placeholder="filename.ext">
-            <div class="modal-actions">
-                <button class="modal-btn secondary" id="modal-cancel">Cancel</button>
-                <button class="modal-btn primary" id="modal-confirm">Create</button>
+        <div id="resizer-h"></div>
+
+        <div id="console-container">
+            <div class="console-toolbar">
+                <span>Console</span>
+                <div class="console-buttons">
+                    <button id="clear-console-btn">Clear</button>
+                    <button id="toggle-console-btn" title="Toggle Console Visibility">▾</button>
+                </div>
             </div>
+            <div id="console-output"></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
     <script>
-const state = {
-    files: {},
-    editorGroups: [{ id: 1, tabs: [], activeTab: null }],
-    nextGroupId: 2,
-    activeGroup: 1,
-    consoleOpen: true,
-};
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE & CONSTANTS ---
+    const APP_STORAGE_KEY = 'webCodeEditorState';
+    const state = {
+        isSplitView: false,
+        isConsoleOpen: true,
+        isFullscreen: false,
+        autoUpdate: true,
+        activeLeftTab: 'html',
+        activeRightTab: 'preview',
+        preFullscreenLeftTab: 'html', // To restore tab after exiting fullscreen
+        leftPaneWidth: 50,  // Store as percentage
+        consoleHeight: 200,  // Store as pixels
+    };
 
-const defaultFiles = {
-    'index.html': {
-        language: 'html',
-        content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Project</title>
-</head>
-<body>
-    <h1>Hello, World!</h1>
-    <button onclick="greet()">Click me</button>
-</body>
-</html>`,
-        model: null,
-    },
-    'style.css': {
-        language: 'css',
-        content: `body {
-    font-family: system-ui, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
+    const files = {
+        html: { name: 'HTML', language: 'html', model: null, defaultValue: `<h1>Hello, World!</h1>\n<p>Edit this content to see live updates.</p>\n<button onclick="testLog()">Log to Console</button>` },
+        css: { name: 'CSS', language: 'css', model: null, defaultValue: `body {\n  font-family: sans-serif;\n  color: #333;\n  background-color: #f4f4f4;\n  padding: 20px;\n}` },
+        js:  { name: 'JavaScript', language: 'javascript', model: null, defaultValue: `// Your JavaScript code here\nconsole.log('Hello from the editor!');\n\nfunction testLog() {\n  console.log("Button was clicked!");\n  console.warn("This is a warning.");\n  console.error("This is an error.");\n}` },
+        preview: { name: 'Preview', language: null, model: null },
+    };
 
-h1 {
-    color: white;
-    font-size: 3em;
-}
+    let previewWindows = []; // Track opened preview windows
 
-button {
-    padding: 12px 24px;
-    font-size: 16px;
-    background: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}`,
-        model: null,
-    },
-    'script.js': {
-        language: 'javascript',
-        content: `console.log('App loaded!');
+    // --- DOM ELEMENTS ---
+    const mainContainer = document.getElementById('main-container');
+    const editorAreaWrapper = document.getElementById('editor-area-wrapper');
+    const splitViewBtn = document.getElementById('split-view-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const previewNewTabBtn = document.getElementById('preview-new-tab-btn');
+    const saveProjectBtn = document.getElementById('save-project-btn');
+    const importFilesBtn = document.getElementById('import-files-btn');
+    const resetProjectBtn = document.getElementById('reset-project-btn');
+    const formatCodeBtn = document.getElementById('format-code-btn');
+    const runBtn = document.getElementById('run-btn');
+    const autoUpdateCheckbox = document.getElementById('auto-update-checkbox');
+    const resizerV = document.getElementById('resizer-v');
+    const resizerH = document.getElementById('resizer-h');
+    const consoleContainer = document.getElementById('console-container');
+    const consoleOutput = document.getElementById('console-output');
+    const clearConsoleBtn = document.getElementById('clear-console-btn');
+    const toggleConsoleBtn = document.getElementById('toggle-console-btn');
+    const previewIframes = document.querySelectorAll('.preview-iframe');
+    const panes = {
+        left:  { el: document.getElementById('pane-left'),  tabBar: document.getElementById('tab-bar-left'),  editorEl: document.getElementById('editor-left'),  previewEl: document.getElementById('preview-left'),  editor: null },
+        right: { el: document.getElementById('pane-right'), tabBar: document.getElementById('tab-bar-right'), editorEl: document.getElementById('editor-right'), previewEl: document.getElementById('preview-right'), editor: null }
+    };
 
-function greet() {
-    console.log('Button clicked!');
-    alert('Hello from JavaScript!');
-}`,
-        model: null,
-    },
-    '🔍 Preview': {
-        language: null,
-        content: '',
-        model: null,
-        isPreview: true,
+    // --- UTILITY FUNCTIONS ---
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
     }
-};
 
-state.files = { ...defaultFiles };
-
-require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
-require(['vs/editor/editor.main'], function() {
-    for (const [filename, file] of Object.entries(state.files)) {
-        if (file.language) {
-            file.model = monaco.editor.createModel(file.content, file.language);
-            file.model.onDidChangeContent(() => {
-                file.content = file.model.getValue();
-                saveState();
-                updatePreview();
-            });
-        }
+    // --- STATE MANAGEMENT (localStorage) ---
+    function saveState() {
+        const stateToSave = {
+            ...state,
+            html: files.html.model?.getValue() || files.html.defaultValue,
+            css: files.css.model?.getValue() || files.css.defaultValue,
+            js: files.js.model?.getValue() || files.js.defaultValue,
+        };
+        // Don't save transient state
+        delete stateToSave.preFullscreenLeftTab;
+        delete stateToSave.isFullscreen;
+        localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(stateToSave));
     }
-    init();
-});
 
-function init() {
+    function loadState() {
+        const savedState = JSON.parse(localStorage.getItem(APP_STORAGE_KEY));
+        if (!savedState) return;
+
+        // Load content
+        files.html.defaultValue = savedState.html || files.html.defaultValue;
+        files.css.defaultValue = savedState.css || files.css.defaultValue;
+        files.js.defaultValue = savedState.js || files.js.defaultValue;
+
+        // Load UI state
+        Object.assign(state, savedState);
+        autoUpdateCheckbox.checked = state.autoUpdate;
+    }
+
+    // --- MONACO EDITOR INITIALIZATION ---
     loadState();
-    renderFileTree();
-    renderEditorGroups();
-    updatePreview();
-    setupEventListeners();
-    
-    if (state.editorGroups[0].tabs.length === 0) {
-        openFile('index.html', 0);
-    }
-}
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+    require(['vs/editor/editor.main'], () => {
+        const debouncedSaveAndUpdate = debounce(() => {
+            if (state.autoUpdate) updateAllPreviews();
+            saveState();
+        }, 300);
 
-function setupEventListeners() {
-    document.getElementById('run-btn').addEventListener('click', updatePreview);
-    document.getElementById('save-project-btn').addEventListener('click', saveProject);
-    document.getElementById('preview-new-tab-btn').addEventListener('click', openPreviewInNewTab);
-    document.getElementById('new-file-btn').addEventListener('click', () => showModal());
-    document.getElementById('clear-console-btn').addEventListener('click', () => {
-        document.getElementById('console-output').innerHTML = '';
+        for (const id in files) {
+            if (files[id].language) {
+                files[id].model = monaco.editor.createModel(files[id].defaultValue, files[id].language);
+                files[id].model.onDidChangeContent(debouncedSaveAndUpdate);
+            }
+        }
+        const commonConfig = { theme: 'vs-dark', automaticLayout: true };
+        panes.left.editor  = monaco.editor.create(panes.left.editorEl, commonConfig);
+        panes.right.editor = monaco.editor.create(panes.right.editorEl, commonConfig);
+        
+        renderUI();
     });
-    document.getElementById('toggle-console-btn').addEventListener('click', () => {
-        state.consoleOpen = !state.consoleOpen;
-        document.getElementById('console-panel').classList.toggle('collapsed', !state.consoleOpen);
+
+    // --- EVENT LISTENERS ---
+    splitViewBtn.addEventListener('click', toggleSplitView);
+    fullscreenBtn.addEventListener('click', toggleFullScreen);
+    previewNewTabBtn.addEventListener('click', openPreviewInNewTab);
+    saveProjectBtn.addEventListener('click', saveProject);
+    importFilesBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '.html,.css,.js';
+        input.onchange = importFiles;
+        input.click();
+    });
+    resetProjectBtn.addEventListener('click', resetProject);
+    formatCodeBtn.addEventListener('click', formatActiveEditor);
+    runBtn.addEventListener('click', updateAllPreviews);
+    autoUpdateCheckbox.addEventListener('change', (e) => {
+        state.autoUpdate = e.target.checked;
         saveState();
     });
+    clearConsoleBtn.addEventListener('click', () => consoleOutput.innerHTML = '');
+    toggleConsoleBtn.addEventListener('click', toggleConsole);
+
+    panes.left.tabBar.addEventListener('click', e => handleTabClick(e, 'left'));
+    panes.right.tabBar.addEventListener('click', e => handleTabClick(e, 'right'));
     
-    document.getElementById('modal-cancel').addEventListener('click', hideModal);
-    document.getElementById('modal-confirm').addEventListener('click', handleModalConfirm);
-    document.getElementById('modal-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleModalConfirm();
-    });
-    document.getElementById('modal-overlay').addEventListener('click', (e) => {
-        if (e.target.id === 'modal-overlay') hideModal();
-    });
-    
-    document.addEventListener('keydown', (e) => {
+    resizerV.addEventListener('mousedown', startResizeV);
+    resizerH.addEventListener('mousedown', startResizeH);
+
+    window.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
-            saveProject();
+            updateAllPreviews();
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
-            e.preventDefault();
-            splitEditorGroup();
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-            e.preventDefault();
-            const group = state.editorGroups.find(g => g.id === state.activeGroup);
-            if (group?.activeTab) closeTab(state.activeGroup, group.activeTab);
+        if (e.key === 'Escape' && state.isFullscreen) {
+            toggleFullScreen();
         }
     });
+
+    // Clean up preview windows on unload
+    window.addEventListener('beforeunload', () => {
+        previewWindows.forEach(win => { if (win && !win.closed) win.close(); });
+    });
+
+    // --- RESIZER LOGIC ---
+    function startResizeV(e) { e.preventDefault(); document.body.classList.add('is-resizing-v'); const startX = e.clientX; const containerRect = mainContainer.getBoundingClientRect(); const startLeftWidth = panes.left.el.getBoundingClientRect().width; function onMove(ev) { const currentX = ev.clientX; const deltaX = currentX - startX; let newLeftWidth = startLeftWidth + deltaX; const minWidth = 150; const maxLeftWidth = containerRect.width - minWidth - 5; newLeftWidth = Math.max(minWidth, Math.min(newLeftWidth, maxLeftWidth)); const newRightWidth = containerRect.width - newLeftWidth - 5; panes.left.el.style.width = `${newLeftWidth}px`; panes.right.el.style.width = `${newRightWidth}px`; if (panes.left.editor) panes.left.editor.layout(); if (panes.right.editor) panes.right.editor.layout(); } function onUp() { document.body.classList.remove('is-resizing-v'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); const finalLeftWidth = panes.left.el.getBoundingClientRect().width; const containerWidth = mainContainer.getBoundingClientRect().width; state.leftPaneWidth = (finalLeftWidth / containerWidth) * 100; saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
+    function startResizeH(e) { e.preventDefault(); document.body.classList.add('is-resizing-h'); const startY = e.clientY; const startHeight = consoleContainer.getBoundingClientRect().height; const totalHeight = editorAreaWrapper.getBoundingClientRect().height; function onMove(ev) { const delta = startY - ev.clientY; let newHeight = startHeight + delta; newHeight = Math.max(45, Math.min(newHeight, totalHeight - 100)); consoleContainer.style.height = newHeight + 'px'; } function onUp() { document.body.classList.remove('is-resizing-h'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); state.consoleHeight = parseInt(consoleContainer.style.height); saveState(); } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); }
+
+    // --- CORE UI LOGIC ---
+    function toggleSplitView() {
+        state.isSplitView = !state.isSplitView;
+        renderUI();
+    }
+    
+    function toggleFullScreen() {
+        state.isFullscreen = !state.isFullscreen;
+        if (state.isFullscreen) {
+            state.preFullscreenLeftTab = state.activeLeftTab;
+            state.activeLeftTab = 'preview';
+        } else {
+            state.activeLeftTab = state.preFullscreenLeftTab;
+        }
+        renderUI();
+    }
+    
+    function toggleConsole() {
+        state.isConsoleOpen = !state.isConsoleOpen;
+        renderUI();
+    }
+
+    function handleTabClick(event, pane) {
+        const tabId = event.target.dataset.tabId;
+        if (!tabId) return;
+
+        if (pane === 'left') state.activeLeftTab = tabId;
+        else state.activeRightTab = tabId;
+
+        renderUI();
+    }
+
+    function renderUI() {
+        // Apply global layout classes
+        document.body.classList.toggle('fullscreen-preview', state.isFullscreen);
+        editorAreaWrapper.classList.toggle('console-closed', !state.isConsoleOpen);
+        mainContainer.classList.toggle('split-view', state.isSplitView);
+        
+        // Update console toggle button icon
+        toggleConsoleBtn.textContent = state.isConsoleOpen ? '▾' : '▴';
+        
+        // Set pane widths
+        if (state.isSplitView) {
+            const containerWidth = mainContainer.offsetWidth;
+            const leftWidth = (containerWidth - 5) * (state.leftPaneWidth / 100);
+            const rightWidth = containerWidth - leftWidth - 5;
+            panes.left.el.style.width = `${leftWidth}px`;
+            panes.right.el.style.width = `${rightWidth}px`;
+        } else {
+            panes.left.el.style.width = '100%';
+            panes.right.el.style.width = '0';
+        }
+        
+        // Set console height
+        consoleContainer.style.height = `${state.consoleHeight}px`;
+
+        // Render panes and tab bars
+        if (!state.isFullscreen) {
+            renderPane('left',  state.activeLeftTab);
+            renderPane('right', state.activeRightTab);
+            renderTabBar(panes.left.tabBar,  state.activeLeftTab);
+            renderTabBar(panes.right.tabBar, state.activeRightTab);
+        } else {
+            // In fullscreen, we only care about the left preview pane
+            panes.left.previewEl.style.display = 'block';
+            panes.left.editorEl.style.display = 'none';
+        }
+        
+        // Update Monaco layout after DOM changes
+        setTimeout(() => {
+            if (panes.left.editor) panes.left.editor.layout();
+            if (panes.right.editor) panes.right.editor.layout();
+        }, 0);
+        
+        if (state.autoUpdate) {
+            updateAllPreviews();
+        }
+        saveState();
+    }
+
+    function renderPane(pane, activeTabId) {
+        const ui = panes[pane];
+        const file = files[activeTabId];
+        if (file.language) {
+            ui.previewEl.style.display = 'none';
+            ui.editorEl.style.display  = 'block';
+            if (ui.editor && ui.editor.getModel() !== file.model) {
+                ui.editor.setModel(file.model);
+            }
+            setTimeout(() => ui.editor?.focus(), 50);
+        } else {
+            ui.editorEl.style.display  = 'none';
+            ui.previewEl.style.display = 'block';
+        }
+    }
+
+    function renderTabBar(container, activeId) {
+        container.innerHTML = '';
+        for (const id in files) {
+            const tab = document.createElement('div');
+            tab.className = 'tab' + (id === activeId ? ' active' : '');
+            tab.dataset.tabId = id;
+            tab.textContent = files[id].name;
+            container.appendChild(tab);
+        }
+    }
+
+    // --- PREVIEW & CONSOLE LOGIC ---
+    function generatePreviewContent() {
+        const html = files.html.model?.getValue() || '';
+        const css  = files.css.model?.getValue() || '';
+        const js   = files.js.model?.getValue() || '';
+
+        const consoleInterceptor = `<script>const _log = (type, args) => window.parent.postMessage({ source: 'iframe-console', type, message: Array.from(args).map(arg => { try { return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg); } catch (e) { return String(arg); } }).join(' ') }, '*'); console.log = (...args) => _log('log', args); console.warn = (...args) => _log('warn', args); console.error = (...args) => _log('error', args); window.addEventListener('error', e => _log('error', [e.message])); <\/script>`;
+        
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style>${consoleInterceptor}</head><body>${html}<script>${js}<\/script></body></html>`;
+    }
     
     window.addEventListener('message', (event) => {
-        if (event.data?.source === 'iframe-console') {
+        if (event.data && event.data.source === 'iframe-console') {
             const { type, message } = event.data;
-            logToConsole(type, message);
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${type.toUpperCase()}] ${message}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
         }
     });
-}
 
-function renderFileTree() {
-    const tree = document.getElementById('file-tree');
-    tree.innerHTML = '';
-    
-    Object.keys(state.files).sort().forEach(filename => {
-        const file = state.files[filename];
-        const item = document.createElement('div');
-        item.className = 'file-tree-item';
-        
-        const icon = document.createElement('span');
-        icon.className = 'icon';
-        icon.textContent = filename.endsWith('.html') ? '🌐' : 
-                          filename.endsWith('.css') ? '🎨' : 
-                          filename.endsWith('.js') ? '⚡' : 
-                          file.isPreview ? '🔍' : '📄';
-        
-        const label = document.createElement('span');
-        label.textContent = filename;
-        
-        item.appendChild(icon);
-        item.appendChild(label);
-        
-        item.addEventListener('click', () => {
-            const activeGroupIndex = state.editorGroups.findIndex(g => g.id === state.activeGroup);
-            openFile(filename, activeGroupIndex >= 0 ? activeGroupIndex : 0);
-        });
-        
-        tree.appendChild(item);
-    });
-}
+    function updateAllPreviews() {
+        const content = generatePreviewContent();
+        previewIframes.forEach(iframe => { iframe.srcdoc = content; });
+        previewWindows = previewWindows.filter(win => !win.closed);
+        previewWindows.forEach(win => { try { win.document.open(); win.document.write(content); win.document.close(); } catch(e) { console.error("Could not update preview window:", e); } });
+    }
 
-function renderEditorGroups() {
-    const container = document.getElementById('editor-groups');
-    container.innerHTML = '';
-    
-    state.editorGroups.forEach((group, index) => {
-        const groupEl = createEditorGroup(group);
-        container.appendChild(groupEl);
-        
-        if (index < state.editorGroups.length - 1) {
-            const resizer = document.createElement('div');
-            resizer.className = 'split-resizer';
-            resizer.addEventListener('mousedown', (e) => startResize(e, index));
-            container.appendChild(resizer);
+    function openPreviewInNewTab() {
+        try {
+            const win = window.open('', '_blank');
+            if (!win) { throw new Error("Popup blocked"); }
+            previewWindows.push(win);
+            win.document.write(generatePreviewContent());
+            win.document.close();
+        } catch(e) {
+            console.error("Could not open new tab:", e);
+            alert("Could not open new tab. Please check your popup blocker settings.");
         }
-    });
-}
+    }
 
-function createEditorGroup(group) {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'editor-group';
-    
-    const header = document.createElement('div');
-    header.className = 'editor-group-header';
-    
-    const tabs = document.createElement('div');
-    tabs.className = 'editor-tabs';
-    
-    group.tabs.forEach(filename => {
-        const tab = createTab(filename, group.id, filename === group.activeTab);
-        tabs.appendChild(tab);
-    });
-    
-    header.appendChild(tabs);
-    
-    const actions = document.createElement('div');
-    actions.className = 'editor-group-actions';
-    
-    const splitBtn = document.createElement('button');
-    splitBtn.className = 'editor-group-action';
-    splitBtn.innerHTML = '⊞';
-    splitBtn.title = 'Split Editor';
-    splitBtn.addEventListener('click', () => {
-        state.activeGroup = group.id;
-        splitEditorGroup();
-    });
-    
-    if (state.editorGroups.length > 1) {
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'editor-group-action';
-        closeBtn.innerHTML = '×';
-        closeBtn.title = 'Close Group';
-        closeBtn.addEventListener('click', () => closeEditorGroup(group.id));
-        actions.appendChild(closeBtn);
+    // --- NEW FEATURES ---
+    function saveProject() {
+        const content = generatePreviewContent();
+        const blob = new Blob([content], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'project.html';
+        a.click();
+        URL.revokeObjectURL(a.href);
     }
-    
-    actions.appendChild(splitBtn);
-    header.appendChild(actions);
-    groupEl.appendChild(header);
-    
-    const content = document.createElement('div');
-    content.className = 'editor-content';
-    
-    if (group.tabs.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-editor';
-        empty.textContent = 'No file open';
-        content.appendChild(empty);
-    } else {
-        group.tabs.forEach(filename => {
-            const instance = document.createElement('div');
-            instance.className = 'editor-instance';
-            if (filename === group.activeTab) instance.classList.add('active');
-            
-            const file = state.files[filename];
-            if (file.isPreview) {
-                const container = document.createElement('div');
-                container.className = 'preview-container';
-                const iframe = document.createElement('iframe');
-                iframe.sandbox = 'allow-scripts allow-same-origin';
-                container.appendChild(iframe);
-                instance.appendChild(container);
-            } else {
-                instance.id = `editor-${group.id}-${filename.replace(/[^a-z0-9]/gi, '-')}`;
-            }
-            
-            content.appendChild(instance);
-        });
+
+    function importFiles(event) {
+        for (const file of event.target.files) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                if (file.name.endsWith('.html')) files.html.model.setValue(content);
+                else if (file.name.endsWith('.css')) files.css.model.setValue(content);
+                else if (file.name.endsWith('.js')) files.js.model.setValue(content);
+            };
+            reader.readAsText(file);
+        }
     }
-    
-    groupEl.appendChild(content);
-    
-    setTimeout(() => {
-        group.tabs.forEach(filename => {
-            const file = state.files[filename];
-            if (!file.isPreview) {
-                const editorEl = content.querySelector(`#editor-${group.id}-${filename.replace(/[^a-z0-9]/gi, '-')}`);
-                if (editorEl && !editorEl.classList.contains('monaco-initialized')) {
-                    monaco.editor.create(editorEl, {
-                        model: file.model,
-                        theme: 'vs-dark',
-                        automaticLayout: true,
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                    });
-                    editorEl.classList.add('monaco-initialized');
+
+    function formatActiveEditor() {
+        // Format left pane if it's an editor
+        if (files[state.activeLeftTab].language) {
+            panes.left.editor.getAction('editor.action.formatDocument').run();
+        }
+        // Format right pane if split view is active and it's an editor
+        if (state.isSplitView && files[state.activeRightTab].language) {
+            panes.right.editor.getAction('editor.action.formatDocument').run();
+        }
+    }
+
+    function resetProject() {
+        if (confirm("Are you sure you want to reset the project? All your current code will be lost.")) {
+            // Reset file content
+            for (const id in files) {
+                if (files[id].model) {
+                    files[id].model.setValue(files[id].defaultValue);
                 }
             }
-        });
-    }, 0);
-    
-    return groupEl;
-}
-
-function createTab(filename, groupId, isActive) {
-    const tab = document.createElement('div');
-    tab.className = 'editor-tab' + (isActive ? ' active' : '');
-    
-    const label = document.createElement('span');
-    label.textContent = filename;
-    
-    const close = document.createElement('span');
-    close.className = 'editor-tab-close';
-    close.innerHTML = '×';
-    close.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeTab(groupId, filename);
-    });
-    
-    tab.appendChild(label);
-    tab.appendChild(close);
-    
-    tab.addEventListener('click', () => switchTab(groupId, filename));
-    
-    return tab;
-}
-
-function openFile(filename, groupIndex = 0) {
-    const group = state.editorGroups[groupIndex];
-    if (!group) return;
-    
-    if (group.tabs.includes(filename)) {
-        switchTab(group.id, filename);
-        return;
-    }
-    
-    group.tabs.push(filename);
-    group.activeTab = filename;
-    state.activeGroup = group.id;
-    
-    renderEditorGroups();
-    saveState();
-}
-
-function closeTab(groupId, filename) {
-    const group = state.editorGroups.find(g => g.id === groupId);
-    if (!group) return;
-    
-    const tabIndex = group.tabs.indexOf(filename);
-    if (tabIndex === -1) return;
-    
-    group.tabs.splice(tabIndex, 1);
-    
-    if (group.activeTab === filename) {
-        if (group.tabs.length > 0) {
-            group.activeTab = group.tabs[Math.max(0, tabIndex - 1)];
-        } else {
-            group.activeTab = null;
-            if (state.editorGroups.length > 1) {
-                closeEditorGroup(groupId);
-                return;
-            }
+            // Reset UI state to defaults
+            state.isSplitView = false;
+            state.isConsoleOpen = true;
+            state.activeLeftTab = 'html';
+            state.activeRightTab = 'preview';
+            
+            // Re-render everything
+            renderUI();
+            updateAllPreviews(); // update preview with default content
         }
     }
-    
-    renderEditorGroups();
-    saveState();
-}
-
-function switchTab(groupId, filename) {
-    const group = state.editorGroups.find(g => g.id === groupId);
-    if (!group) return;
-    
-    group.activeTab = filename;
-    state.activeGroup = groupId;
-    
-    renderEditorGroups();
-    saveState();
-}
-
-function splitEditorGroup() {
-    const activeGroup = state.editorGroups.find(g => g.id === state.activeGroup);
-    if (!activeGroup) return;
-    
-    const newGroup = {
-        id: state.nextGroupId++,
-        tabs: activeGroup.activeTab ? [activeGroup.activeTab] : [],
-        activeTab: activeGroup.activeTab,
-    };
-    
-    const activeIndex = state.editorGroups.findIndex(g => g.id === state.activeGroup);
-    state.editorGroups.splice(activeIndex + 1, 0, newGroup);
-    state.activeGroup = newGroup.id;
-    
-    renderEditorGroups();
-    saveState();
-}
-
-function closeEditorGroup(groupId) {
-    if (state.editorGroups.length === 1) return;
-    
-    const index = state.editorGroups.findIndex(g => g.id === groupId);
-    if (index === -1) return;
-    
-    state.editorGroups.splice(index, 1);
-    
-    if (state.activeGroup === groupId) {
-        const newIndex = Math.max(0, index - 1);
-        state.activeGroup = state.editorGroups[newIndex].id;
-    }
-    
-    renderEditorGroups();
-    saveState();
-}
-
-function startResize(e, leftIndex) {
-    e.preventDefault();
-    document.body.classList.add('is-resizing');
-    
-    const groups = document.querySelectorAll('.editor-group');
-    const leftGroup = groups[leftIndex];
-    const rightGroup = groups[leftIndex + 1];
-    
-    const startX = e.clientX;
-    const startLeftWidth = leftGroup.offsetWidth;
-    const startRightWidth = rightGroup.offsetWidth;
-    
-    function onMove(e) {
-        const delta = e.clientX - startX;
-        const newLeftWidth = startLeftWidth + delta;
-        const newRightWidth = startRightWidth - delta;
-        
-        if (newLeftWidth > 200 && newRightWidth > 200) {
-            leftGroup.style.flex = `0 0 ${newLeftWidth}px`;
-            rightGroup.style.flex = `0 0 ${newRightWidth}px`;
-        }
-    }
-    
-    function onUp() {
-        document.body.classList.remove('is-resizing');
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-    }
-    
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-}
-
-function updatePreview() {
-    const html = state.files['index.html']?.content || '';
-    const css = state.files['style.css']?.content || '';
-    const js = state.files['script.js']?.content || '';
-    
-    const consoleScript = `<script>(function(){const o=console.log,w=console.warn,e=console.error;function s(t,a){window.parent.postMessage({source:'iframe-console',type:t,message:Array.from(a).map(x=>typeof x==='object'?JSON.stringify(x,null,2):String(x)).join(' ')},'*')}console.log=(...a)=>s('log',a);console.warn=(...a)=>s('warn',a);console.error=(...a)=>s('error',a);window.addEventListener('error',e=>s('error',[e.message]))})();</script>`;
-    
-    let fullHtml = html.replace('<head>', '<head>' + consoleScript);
-    
-    if (css && fullHtml.includes('</head>')) {
-        fullHtml = fullHtml.replace('</head>', `<style>${css}</style></head>`);
-    }
-    
-    if (js && fullHtml.includes('</body>')) {
-        fullHtml = fullHtml.replace('</body>', `<script>${js}</script></body>`);
-    }
-    
-    document.querySelectorAll('.preview-container iframe').forEach(iframe => {
-        iframe.srcdoc = fullHtml;
-    });
-}
-
-function openPreviewInNewTab() {
-    const html = state.files['index.html']?.content || '';
-    const css = state.files['style.css']?.content || '';
-    const js = state.files['script.js']?.content || '';
-    
-    let fullHtml = html;
-    if (css) fullHtml = fullHtml.replace('</head>', `<style>${css}</style></head>`);
-    if (js) fullHtml = fullHtml.replace('</body>', `<script>${js}</script></body>`);
-    
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
-}
-
-function logToConsole(type, message) {
-    const entry = document.createElement('div');
-    entry.className = `console-entry ${type}`;
-    entry.innerHTML = `<span>${type === 'error' ? '✖' : type === 'warn' ? '⚠' : '>'}</span><span>${message}</span>`;
-    
-    const output = document.getElementById('console-output');
-    output.appendChild(entry);
-    output.scrollTop = output.scrollHeight;
-}
-
-function showModal() {
-    document.getElementById('modal-overlay').classList.add('active');
-    document.getElementById('modal-input').focus();
-}
-
-function hideModal() {
-    document.getElementById('modal-overlay').classList.remove('active');
-    document.getElementById('modal-input').value = '';
-}
-
-function handleModalConfirm() {
-    const filename = document.getElementById('modal-input').value.trim();
-    if (!filename) return;
-    
-    if (state.files[filename]) {
-        alert('File already exists!');
-        return;
-    }
-    
-    const ext = filename.split('.').pop();
-    const language = ext === 'html' ? 'html' : ext === 'css' ? 'css' : ext === 'js' ? 'javascript' : 'plaintext';
-    
-    const model = monaco.editor.createModel('', language);
-    model.onDidChangeContent(() => {
-        state.files[filename].content = model.getValue();
-        saveState();
-        updatePreview();
-    });
-    
-    state.files[filename] = { language, content: '', model };
-    
-    renderFileTree();
-    openFile(filename, state.editorGroups.findIndex(g => g.id === state.activeGroup));
-    hideModal();
-    saveState();
-}
-
-function saveProject() {
-    const html = state.files['index.html']?.content || '';
-    const css = state.files['style.css']?.content || '';
-    const js = state.files['script.js']?.content || '';
-    
-    let fullHtml = html;
-    if (css) fullHtml = fullHtml.replace('</head>', `<style>${css}</style></head>`);
-    if (js) fullHtml = fullHtml.replace('</body>', `<script>${js}</script></body>`);
-    
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'project.html';
-    a.click();
-}
-
-function saveState() {
-    const data = {
-        files: {},
-        editorGroups: state.editorGroups.map(g => ({ id: g.id, tabs: g.tabs, activeTab: g.activeTab })),
-        activeGroup: state.activeGroup,
-        consoleOpen: state.consoleOpen,
-        nextGroupId: state.nextGroupId,
-    };
-    
-    for (const [filename, file] of Object.entries(state.files)) {
-        if (!file.isPreview) {
-            data.files[filename] = { language: file.language, content: file.content };
-        }
-    }
-    
-    localStorage.setItem('vscode-editor-state', JSON.stringify(data));
-}
-
-function loadState() {
-    try {
-        const saved = localStorage.getItem('vscode-editor-state');
-        if (!saved) return;
-        
-        const data = JSON.parse(saved);
-        
-        if (data.files) {
-            for (const [filename, fileData] of Object.entries(data.files)) {
-                if (state.files[filename]?.model) {
-                    state.files[filename].content = fileData.content;
-                    state.files[filename].model.setValue(fileData.content);
-                }
-            }
-        }
-        
-        if (data.editorGroups?.length > 0) {
-            state.editorGroups = data.editorGroups;
-        }
-        
-        if (data.activeGroup) state.activeGroup = data.activeGroup;
-        if (data.consoleOpen !== undefined) {
-            state.consoleOpen = data.consoleOpen;
-            document.getElementById('console-panel').classList.toggle('collapsed', !state.consoleOpen);
-        }
-        if (data.nextGroupId) state.nextGroupId = data.nextGroupId;
-    } catch (e) {
-        console.error('Failed to load state:', e);
-    }
-}
+});
     </script>
 </body>
 </html>
